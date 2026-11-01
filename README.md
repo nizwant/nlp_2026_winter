@@ -4,13 +4,13 @@
 
 The project is a part of the Natural Language Processing course at the Warsaw University of Technology. The project's goal is to ...
 
-Authors: Tymoteusz Urban, Sebastian Trojan, Mateusz Nizwantowski
+Authors: Tymoteusz Urban, Sebastian Trojan, Mateusz Nizwantowski  
 Supervisor: Soveatin Kuntur - soveatin.kuntur.dokt@pw.edu.pl
 
 ## Useful Resources
 
-course main repo: https://github.com/grant-TraDA/NLP-2026W
-overleaf lind with reports: https://www.overleaf.com/project/6ae711011f26b6a0c20dceb7
+- course main repo: https://github.com/grant-TraDA/NLP-2026W
+- overleaf lind with reports: https://www.overleaf.com/project/6ae711011f26b6a0c20dceb7
 
 | Phase | Deliverables | Points | Deadline |
 | --- | --- | ---: | --- |
@@ -20,16 +20,16 @@ overleaf lind with reports: https://www.overleaf.com/project/6ae711011f26b6a0c20
 
 ### Self-check before you submit
 
-[ ] Contribution table, one row per person, with hours — without it the report is not accepted, in every phase
-[ ] LLM-use declaration — same rule
-[ ] README that lets a stranger run one experiment
-[ ] Runtime and memory measured and reported
-[ ] Every number in every table says which split it comes from
-[ ] Every preprint checked for a published version
-[ ] Data statement present
-[ ] Rebuttal answers every review point AND every Q&A question, at a named place, checkably
-[ ] Correct template, submitted on time
-[ ] Folder named surname_surname_surname, same order as Milestone 1
+- [ ] Contribution table, one row per person, with hours — without it the report is not accepted, in every phase
+- [ ] LLM-use declaration — same rule
+- [ ] README that lets a stranger run one experiment
+- [ ] Runtime and memory measured and reported
+- [ ] Every number in every table says which split it comes from
+- [ ] Every preprint checked for a published version
+- [ ] Data statement present
+- [ ] Rebuttal answers every review point AND every Q&A question, at a named place, checkably
+- [ ] Correct template, submitted on time
+- [ ] Folder named surname_surname_surname, same order as Milestone 1
 
 ## Datasets
 
