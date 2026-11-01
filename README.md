@@ -30,3 +30,12 @@ overleaf lind with reports: https://www.overleaf.com/project/6ae711011f26b6a0c20
 [ ] Rebuttal answers every review point AND every Q&A question, at a named place, checkably
 [ ] Correct template, submitted on time
 [ ] Folder named surname_surname_surname, same order as Milestone 1
+
+## Datasets
+
+- SemEval-2023 Task 3:
+  - pl - https://github.com/yrf1/SemEval23-Task-3-UIUC-Team/tree/main/data/po
+  - en - https://github.com/yrf1/SemEval23-Task-3-UIUC-Team/tree/main/data/en
+
+- MIPD:
+  - intention and manipulation tasks - https://github.com/ArkadiusDS/MIPD/tree/master/data
