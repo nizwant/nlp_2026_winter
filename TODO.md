@@ -1,5 +1,9 @@
 # TODO
 
-1. Meet at monday 18:00 2nd November
-2. Create todo
-3. Create 1st deliverable
+1. Mateusz - Opisz datasets - jakaś analiza (środa)
+2. Mateusz - Obrób oba datasets żeby się przyjemnie z nimi pracowało (9.11)
+3. Tymek - state of the art review (środa)
+4. Tymek - wysłać raport na email i PR (link w readme) (środa)
+5. Sebastian - spisać 1.3 - Pipeline, metrics, deliverables, owners - plan przyszłosci (środa)
+6. Sebastian - podział pracy - until now, declaration of ai use (środa)
+7. Mateusz - final review (środa)
