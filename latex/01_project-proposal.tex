@@ -13,6 +13,7 @@
 \usepackage{url}
 \usepackage{latexsym}
 \usepackage{xcolor}
+\usepackage{graphicx}
 
 %\setlength\titlebox{5cm}
 
@@ -44,7 +45,7 @@
 \maketitle
 
 \begin{abstract}
-  Large language models (LLMs) are increasingly used to annotate text, but repeated agreement between model runs is useful for annotation routing only if it predicts correctness. This project tests whether self-consistency across five reruns can identify correct multilabel annotations of persuasion and manipulation techniques across English and Polish. We will evaluate Bielik, PLLuM and Gemma~4 on three data sources: English and Polish SemEval-2023 Task~3 data and the Polish MIPD dataset. Across language-appropriate prompt strategies, we will compare consistency with token log-probability, verbalised confidence and random routing. Unlike work that treats rerun variability as an outcome in itself, we assess whether agreement is diagnostic of error and whether it supports a practical cost--quality trade-off. Using held-out evaluation and calibration-only threshold selection, we will measure predictive performance, annotation coverage, quality, human review effort and inference cost, with uncertainty estimates. The project will deliver a reproducible evaluation pipeline, prompts and logging code, alongside consistency--correctness analyses and cost--quality routing curves. Repeated inference will use a performance-optimised vLLM setup, with runtime and GPU memory tracked. The study may establish that self-consistency is a useful routing signal or provide evidence that it offers no practical advantage over simpler alternatives.
+  Large language models (LLMs) are increasingly used to annotate text, but repeated agreement between model runs is useful for annotation routing only if it predicts correctness. This project tests whether self-consistency across five reruns can identify correct multilabel annotations of persuasion and manipulation techniques across English and Polish. We will evaluate Bielik, PLLuM and Gemma~4 on three data sources: Polish SemEval-2023 Task~3 paragraphs and Polish MIPD articles, with English SemEval-2023 Task~3 paragraphs as an additional source. Across language-appropriate prompt strategies, we will compare consistency with token log-probability, verbalised confidence and random routing. Unlike work that treats rerun variability as an outcome in itself, we assess whether agreement is diagnostic of error and whether it supports a practical cost--quality trade-off. Using held-out evaluation and calibration-only threshold selection, we will measure predictive performance, annotation coverage, quality, human review effort and inference cost, with uncertainty estimates. The project will deliver a reproducible evaluation pipeline, prompts and logging code, alongside consistency--correctness analyses and cost--quality routing curves. Repeated inference will use a performance-optimised vLLM setup, with runtime and GPU memory tracked. The study may establish that self-consistency is a useful routing signal or provide evidence that it offers no practical advantage over simpler alternatives.
 \end{abstract}
 
 \section{Introduction}
@@ -55,6 +56,7 @@ This study asks whether self-consistency across LLM reruns predicts correctness 
 \item \textbf{Significance of the project.}
 Annotation is costly, but LLMs can be consistently wrong. Repeated inference also adds compute cost, so improved routing must be compared with cheaper confidence signals. We evaluate self-consistency for multilabel text classification across English and Polish data, examining its practical cost--quality trade-off across languages and annotation tasks. Model comparisons are descriptive, not causal evidence about model size or language specialisation.
 
+\newpage
 \item \textbf{Concept and work plan.}
 Figure~\ref{fig:pipeline} summarises the workflow.
 
@@ -103,7 +105,7 @@ Figure~\ref{fig:pipeline} summarises the workflow.
 (iii) Reproducible prompts, code, settings and outputs; sensitive outputs remain private.
 
 \textit{Preliminary status.}
-Datasets and label definitions are available; model experiments have not yet been run.
+All three datasets are downloaded and profiled (status: ready; see Datasets); model experiments have not yet been run.
 
 \textit{Timeline and ownership.}
 Table~\ref{tab:work-plan} presents weekly tasks, milestones and individual responsibilities.
@@ -148,7 +150,7 @@ Pilot runtime will determine a feasible shared sample and GPU settings. Audit da
 
 \item \textbf{Approach and research methodology.}
 \textit{Data and models.}
-Use SemEval-2023 Task~3 Polish and English paragraphs and MIPD articles with separate native label taxonomies. Verify whether absent MIPD indicators mean negative or missing labels. Audit duplicates and enforce document-disjoint training, calibration and held-out splits; use official splits where possible. Models: Bielik 11B v3 Instruct (SpeakLeash), PLLuM 12B Chat 2412 (CYFRAGOVPL) and Gemma 4 E2B IT (Google).
+Use the three sources described under Datasets, each with its native label taxonomy. Because SemEval test gold labels are unpublished, pool SemEval train and dev and re-split them by article. Models: Bielik 11B v3 Instruct (SpeakLeash), PLLuM 12B Chat 2412 (CYFRAGOVPL) and Gemma 4 E2B IT (Google).
 
 
 \textit{Prompt strategies.}
@@ -176,7 +178,70 @@ Compare confidence signals on matched five-run predictions and complete policies
 Use Python and a performance-optimised vLLM configuration on local NVIDIA GPUs, with a Dockerfile and Conda environment specification. Optimise inference throughput and memory use while preserving the fixed decoding settings required for reproducibility. Log versions, model settings, seeds, GPU memory, runtime and execution commands. No model fine-tuning is planned.
 
 \item well-justified project literature (full bibliographic data);
-\item \textbf{Data statement.} Source, licence, personal data and safeguards (up to six lines).
+
+\item \textbf{Datasets.}
+All three sources are publicly available, downloaded and ready (Table~\ref{tab:datasets}); label definitions are summarised in Table~\ref{tab:labels} and label frequencies in Figure~\ref{fig:labels}. Polish data are primary; English SemEval is an additional source for cross-lingual comparison.
+
+\textit{SemEval-2023 Task~3}~\cite{piskorski-etal-2023-semeval} was created for a multilingual shared task on news genre, framing and persuasion techniques. It contains news and web articles (2020--mid~2022) from mainstream and alternative outlets on topics such as COVID-19, climate change, migration and the war in Ukraine. We use subtask~3: paragraph-level multilabel detection of 23 persuasion techniques grouped into six categories; only 19 occur in the English data. We downloaded the English and Polish data from the UIUC team's GitHub mirror\footnote{\url{https://github.com/yrf1/SemEval23-Task-3-UIUC-Team}}; it is used for research purposes only. Test gold labels are not public, so only train and dev are used; 16 Polish label rows without matching text are dropped.
+
+\textit{MIPD}~\cite{modzelewski-etal-2024-mipd} was created to study manipulation and intention in Polish online disinformation. It contains 15,356 web articles (mean 767 words) from more than 400 public sources, including government sites, alternative media and conspiracy or propaganda websites. Five professional fact-checkers with at least three years of experience annotated the articles; two experts assessed each article, disagreements were resolved by discussion, and unresolved ``hard to say'' cases were excluded. Besides credibility, intention and thematic categories, articles carry 11 manipulation-technique labels, the only labels we use. We keep all articles; credible articles have empty label sets (76\%). The dataset is distributed on GitHub\footnote{\url{https://github.com/ArkadiusDS/MIPD}} under CC BY-NC-ND~4.0.
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lrrrrr@{}}
+\hline
+Source (unit) & Docs & Items & Labels & Med.\ words & Empty \\
+\hline
+SemEval EN (paragraph) & 536 & 12,625 & 19/23 & 28 & 61\% \\
+SemEval PL (paragraph) & 194 & 3,094 & 23/23 & 39 & 47\% \\
+MIPD PL (article) & 15,356 & 15,356 & 11/11 & 544 & 76\% \\
+\hline
+\end{tabular}
+\caption{Dataset sizes. SemEval: train+dev (EN 446+90, PL 145+49 articles); MIPD: official train/validation/test (10,749/3,086/1,521). Labels = techniques present / taxonomy size; Empty = items with no technique.}
+\label{tab:datasets}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{img/label_distribution.pdf}
+\caption{Label frequencies. Left: SemEval-2023 Task~3 train+dev (\% of paragraphs; EN in blue, PL in red). Right: MIPD manipulation labels across all splits (\% of all articles; 76\% have no technique label).}
+\label{fig:labels}
+\end{figure*}
+
+\begin{table*}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{0.95}
+\begin{tabular}{@{}p{2.35cm}p{2.55cm}@{\hspace{8pt}}p{2.4cm}p{2.55cm}@{\hspace{8pt}}p{1.9cm}p{2.95cm}@{}}
+\hline
+\multicolumn{4}{@{}l}{\textbf{SemEval-2023 Task~3} (paragraph level)} & \multicolumn{2}{l@{}}{\textbf{MIPD} (article level)}\\
+\hline
+\multicolumn{2}{@{}l}{\textit{Justification}} & \multicolumn{2}{l}{\textit{Call}} & Cherry Picking & Selective data supporting a claim \\
+Appeal to Authority & Cites an authority as support & Slogans & Brief, striking phrase & Quote Mining & Distorts statements via selective excerpts \\
+Appeal to Popularity & ``Everybody agrees'' & Appeal to Time$^\dagger$ & The time to act is now & Anecdote & Personal stories against statistical evidence \\
+Appeal to Values$^\dagger$ & Links idea to positive values & Conversation Killer & Discourages further discussion & Whataboutism & Deflects via an unrelated argument \\
+Appeal to Fear-Prejudice & Exploits fear or prejudice & \multicolumn{2}{l}{\textit{Manipulative wording}} & Strawman & Attacks a misrepresented argument \\
+Flag Waving & Appeals to group pride or benefit & Loaded Language & Emotionally charged words & Leading Questions & Questions implying a set conclusion \\
+\multicolumn{2}{@{}l}{\textit{Simplification}} & Repetition & Repeats words or phrases to persuade & Appeal to Emotion & Manipulates readers' emotions \\
+Causal Oversimplification & Assumes a single cause & Exaggeration-Minimisation & Over- or understates & False Cause & Causation from mere correlation \\
+False Dilemma-No Choice & Only two options presented & Obfuscation-Vagueness-Confusion & Deliberately unclear wording & Exaggeration & Over- or understates facts \\
+Consequential Oversimplification$^\dagger$ & Unproven chain of consequences & \multicolumn{2}{l}{\textit{Attack on reputation}} & Reference Error & Cites unreliable or false sources \\
+\multicolumn{2}{@{}l}{\textit{Distraction}} & Name Calling-Labeling & Loaded labels for a target & Misleading Clickbait & Headline contradicting the article \\
+Straw Man & Refutes a distorted argument & Doubt & Questions target's credibility & & \\
+Red Herring & Diverts to another topic & Guilt by Association & Links target to a disliked group & & \\
+Whataboutism & Counter-accusation instead of answer & Appeal to Hypocrisy & Charges target with hypocrisy & & \\
+ & & Questioning the Reputation$^\dagger$ & Attacks character or morals & & \\
+\hline
+\end{tabular}
+\caption{Label taxonomies with abridged definitions (SemEval: official guidelines, grouped by the six official categories; MIPD: dataset documentation). $^\dagger$Absent from English SemEval data.}
+\label{tab:labels}
+\end{table*}
+
+\item \textbf{Data statement.}
+SemEval-2023 Task~3 EN/PL (research use) and MIPD (CC BY-NC-ND~4.0) are used non-commercially with attribution. All texts are publicly available news and web articles. They contain no personal data beyond public figures named in news reporting, and we collect none. We do not attempt to identify authors, modify the datasets or fine-tune models on them.
 
 \item \textbf{Contribution table.}
 Table~\ref{tab:contributions} records Phase 1 work.
@@ -189,7 +254,7 @@ Member & Phase 1 contribution & h\\
 \hline
 \shortstack[l]{Tymoteusz\\Urban} & State-of-the-art literature review. & 8\\
 \shortstack[l]{Sebastian\\Trojan} & Scientific goal, concept, methodology, plan, contribution table and LLM-use declaration. & 5\\
-\shortstack[l]{Mateusz\\Nizwantowski} & Datasets and status; data statement. & 8\\
+\shortstack[l]{Mateusz\\Nizwantowski} & Repository and Overleaf setup; Datasets and status; data statement. & 8\\
 \hline
 Total & & 17\\
 \hline
@@ -199,11 +264,10 @@ Total & & 17\\
 \end{table}
 
 \item \textbf{Declaration of LLM use.}
-OpenAI Codex supported drafting, language editing and \LaTeX{} formatting. The authors are responsible for the final content.
+OpenAI Codex supported drafting, language editing and \LaTeX{} formatting. Abstract generation based on the body of the proposal. The authors are responsible for the final content.
 \end{enumerate}
 
-% include your bib file like this:
-%\bibliographystyle{acl}
-%\bibliography{acl2015}
+\bibliographystyle{acl}
+\bibliography{references}
 
 \end{document}
