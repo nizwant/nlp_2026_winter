@@ -44,17 +44,16 @@
 \maketitle
 
 \begin{abstract}
-  Write about the proposed work touching the research gap you are addressing, novelty, and on the proposed deliverable aimed from this project.
-  (Short description up to 250 words.)
+  Large language models (LLMs) are increasingly used to annotate text, but repeated agreement between model runs is useful for annotation routing only if it predicts correctness. This project tests whether self-consistency across five reruns can identify correct multilabel annotations of persuasion and manipulation techniques across English and Polish. We will evaluate Bielik, PLLuM and Gemma~4 on three data sources: English and Polish SemEval-2023 Task~3 data and the Polish MIPD dataset. Across language-appropriate prompt strategies, we will compare consistency with token log-probability, verbalised confidence and random routing. Unlike work that treats rerun variability as an outcome in itself, we assess whether agreement is diagnostic of error and whether it supports a practical cost--quality trade-off. Using held-out evaluation and calibration-only threshold selection, we will measure predictive performance, annotation coverage, quality, human review effort and inference cost, with uncertainty estimates. The project will deliver a reproducible evaluation pipeline, prompts and logging code, alongside consistency--correctness analyses and cost--quality routing curves. Repeated inference will use a performance-optimised vLLM setup, with runtime and GPU memory tracked. The study may establish that self-consistency is a useful routing signal or provide evidence that it offers no practical advantage over simpler alternatives.
 \end{abstract}
 
 \section{Introduction}
 \begin{enumerate}
 \item \textbf{Scientific goal of the project.}
-This study asks whether self-consistency across LLM reruns predicts correctness of multilabel annotations of Polish persuasion and manipulation techniques and supports cost-effective human--model routing. H1: higher self-consistency distinguishes correct from incorrect predictions better than chance across models, datasets and prompting strategies. H2: at comparable annotation quality, consistency-based routing achieves greater automatic coverage than alternative confidence-based approaches, including cheaper single-run methods. We also evaluate risk--coverage trade-offs, human annotation effort saved and additional inference costs. Negative results are considered valid research outcomes.
+This study asks whether self-consistency across LLM reruns predicts correctness of multilabel annotations of persuasion and manipulation techniques in English and Polish texts and supports cost-effective human--model routing. H1: higher self-consistency distinguishes correct from incorrect predictions better than chance across models, data sources and prompting strategies. H2: at comparable annotation quality, consistency-based routing achieves greater automatic coverage than alternative confidence-based approaches, including cheaper single-run methods. We also evaluate risk--coverage trade-offs, human annotation effort saved and additional inference costs. Negative results are considered valid research outcomes.
 
 \item \textbf{Significance of the project.}
-Annotation is costly, but LLMs can be consistently wrong. Repeated inference also adds compute cost, so improved routing must be compared with cheaper confidence signals. We evaluate self-consistency for multilabel Polish text classification and its practical cost--quality trade-off. Model comparisons are descriptive, not causal evidence about size or language specialisation.
+Annotation is costly, but LLMs can be consistently wrong. Repeated inference also adds compute cost, so improved routing must be compared with cheaper confidence signals. We evaluate self-consistency for multilabel text classification across English and Polish data, examining its practical cost--quality trade-off across languages and annotation tasks. Model comparisons are descriptive, not causal evidence about model size or language specialisation.
 
 \item \textbf{Concept and work plan.}
 Figure~\ref{fig:pipeline} summarises the workflow.
@@ -68,7 +67,7 @@ Figure~\ref{fig:pipeline} summarises the workflow.
   branch/.style={stage,text width=2.65cm,font=\scriptsize},
   analysis/.style={branch,minimum height=1.55cm},
   flow/.style={-{Latex[length=1.6mm]},semithick,draw=black!65}]
-\node[stage] (data) {\textbf{Gold-labelled Polish texts}\\SemEval paragraphs; MIPD articles\\Document-disjoint splits};
+\node[stage] (data) {\textbf{Three gold-labelled data sources}\\SemEval English and Polish paragraphs; MIPD articles\\Document-disjoint splits};
 \node[stage,below=of data] (prompts) {\textbf{Three prompts}\\Polish/English zero-shot; Polish few-shot};
 \node[stage,below=of prompts] (runs) {\textbf{Three models; five reruns per batch}\\Three independent seed schedules};
 \node[analysis,below=6mm of runs.south,xshift=-1.8cm] (prediction)
@@ -149,7 +148,7 @@ Pilot runtime will determine a feasible shared sample and GPU settings. Audit da
 
 \item \textbf{Approach and research methodology.}
 \textit{Data and models.}
-Use SemEval-2023 Task~3 Polish paragraphs and MIPD articles with separate native label taxonomies. Verify whether absent MIPD indicators mean negative or missing labels. Audit duplicates and enforce document-disjoint training, calibration and held-out splits; use official splits where possible. Models: Bielik 11B v3 Instruct (SpeakLeash), PLLuM 12B Chat 2412 (CYFRAGOVPL) and Gemma 4 E2B IT (Google).
+Use SemEval-2023 Task~3 Polish and English paragraphs and MIPD articles with separate native label taxonomies. Verify whether absent MIPD indicators mean negative or missing labels. Audit duplicates and enforce document-disjoint training, calibration and held-out splits; use official splits where possible. Models: Bielik 11B v3 Instruct (SpeakLeash), PLLuM 12B Chat 2412 (CYFRAGOVPL) and Gemma 4 E2B IT (Google).
 
 
 \textit{Prompt strategies.}
@@ -174,7 +173,7 @@ Calibrate thresholds without test data, maximising coverage subject to 95\% acce
 Compare confidence signals on matched five-run predictions and complete policies against cheaper single-run baselines. Report coverage, quality, inference time and estimated human hours based on a timed sample from each dataset. Estimate net monetary cost using explicit labour and compute rates, including reruns and confidence queries; do not assume savings.
 
 \textit{Tools.}
-Use Python and vLLM on local NVIDIA GPUs, with a Dockerfile and Conda environment specification. Log versions, model settings, seeds, GPU memory, runtime and execution commands. No model fine-tuning is planned.
+Use Python and a performance-optimised vLLM configuration on local NVIDIA GPUs, with a Dockerfile and Conda environment specification. Optimise inference throughput and memory use while preserving the fixed decoding settings required for reproducibility. Log versions, model settings, seeds, GPU memory, runtime and execution commands. No model fine-tuning is planned.
 
 \item well-justified project literature (full bibliographic data);
 \item \textbf{Data statement.} Source, licence, personal data and safeguards (up to six lines).
