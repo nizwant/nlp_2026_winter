@@ -218,3 +218,20 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# LaTeX compilation artifacts
+/latex/*.aux
+/latex/*.bbl
+/latex/*.bcf
+/latex/*.blg
+/latex/*.dvi
+/latex/*.fdb_latexmk
+/latex/*.fls
+/latex/*.lof
+/latex/*.lot
+/latex/*.out
+# /latex/*.pdf
+/latex/*.run.xml
+/latex/*.synctex*
+/latex/*.toc
+/latex/*.xdv
