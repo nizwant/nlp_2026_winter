@@ -235,3 +235,4 @@ __marimo__/
 /latex/*.synctex*
 /latex/*.toc
 /latex/*.xdv
+/latex/sota_*

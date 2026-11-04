@@ -177,7 +177,93 @@ Compare confidence signals on matched five-run predictions and complete policies
 \textit{Tools.}
 Use Python and a performance-optimised vLLM configuration on local NVIDIA GPUs, with a Dockerfile and Conda environment specification. Optimise inference throughput and memory use while preserving the fixed decoding settings required for reproducibility. Log versions, model settings, seeds, GPU memory, runtime and execution commands. No model fine-tuning is planned.
 
-\item well-justified project literature (full bibliographic data);
+\begin{table*}[t]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{0.95}
+\begin{tabular}{@{}p{2.2cm}p{3.4cm}p{3.9cm}p{2.0cm}p{3.5cm}@{}}
+\hline
+Work & Task / method & Data (language), split & Model & Result \\
+\hline
+\multicolumn{5}{@{}l}{\textit{Persuasion and manipulation detection}}\\
+\newcite{piskorski-etal-2023-semeval} & Shared task: multilabel detection of 23 techniques in paragraphs
+  & SemEval-2023 T3 ST3 (EN, PL), official test & SVM baseline & micro-F1: EN 0.195, PL 0.179 \\
+\newcite{purificato-navigli-2023-apatt} & Ensemble of five fine-tuned encoders
+  & SemEval-2023 T3 ST3 (EN, PL), official test & APatt & micro-F1: EN 0.376 (1st place), PL 0.366 \\
+\newcite{hromadka-etal-2023-kinitveraai} & One model fine-tuned on all languages
+  & SemEval-2023 T3 ST3 (PL, EN), official test & XLM-R-large & micro-F1: PL 0.430 (1st place), EN 0.362 \\
+\newcite{modzelewski-etal-2024-mipd} & Multilabel detection of 11 manipulation techniques in articles
+  & MIPD (PL), test, 1,521 articles & HerBERT-large & weighted F1 0.47 (mean of 5 seeds) \\
+\newcite{hasanain-etal-2024-gpt} & Prompted GPT-4 compared with fine-tuned encoders
+  & ArPro (AR), test; SemEval-2023 T3 (PL), dev & XLM-R, GPT-4
+  & ArPro micro-F1: XLM-R 0.608, GPT-4 3-shot 0.467; PL dev: GPT-4 zero-shot 0.071 \\
+\newcite{jose-greenstadt-2025-llms} & Zero-shot prompting, 25 techniques
+  & SlavicNLP 2025 subtask 2 (PL), official test & GPT-4o-mini & micro-F1 0.419 (1st place), macro-F1 0.296 \\
+\hline
+\multicolumn{5}{@{}l}{\textit{Confidence of LLM outputs}}\\
+\newcite{wang2023selfconsistency} & Majority vote over 40 sampled answers
+  & GSM8K (EN), test & PaLM-540B & accuracy 0.744 (single answer: 0.565) \\
+\newcite{manakul-etal-2023-selfcheckgpt} & Agreement between samples to detect hallucinations
+  & WikiBio GPT-3 (EN), all 1,908 sentences & GPT-3 & AUC-PR 0.934 (token log-prob: 0.832) \\
+\newcite{tian-etal-2023-just} & Model states its own confidence
+  & TriviaQA (EN), validation, 1,000 questions & GPT-3.5-turbo & ECE 0.050 (token prob: 0.140) \\
+\newcite{merdjanovska-etal-2026-evaluation} & Compares consistency, stated confidence and log-prob for classification
+  & SST-2 and SST-5 test, Yahoo and ESCI samples (EN), average & Qwen3-32B
+  & AUROC: consistency 0.573, stated 0.661, log-prob 0.623 \\
+\newcite{geifman2017selective} & Model may abstain below a confidence threshold
+  & ImageNet, half of validation set held out & ResNet-50 & top-5 error 0.019 at coverage 0.594 \\
+\hline
+\multicolumn{5}{@{}l}{\textit{LLMs as annotators}}\\
+\newcite{gilardi2023chatgpt} & Zero-shot annotation compared with crowd workers
+  & 6,183 tweets and news articles (EN) & ChatGPT & accuracy about 0.25 higher than MTurk \\
+\newcite{atil-etal-2025-non} & Ten runs with temperature 0 and fixed seed
+  & MMLU college math (EN), 100 questions & GPT-4o & accuracy between runs from 0.44 to 0.88 \\
+\newcite{li-etal-2023-coannotating} & Splits items between LLM and humans by answer entropy
+  & TempoWiC (EN), test, 40\% of items labelled by LLM & RoBERTa & macro-F1 0.569 (random split: 0.532) \\
+\newcite{pangakis2025keeping} & Consistency over at least 5 reruns
+  & 27 tasks (EN), 1,000 human-labelled items each & GPT-4 & accuracy of fully consistent labels 0.194 higher \\
+\hline
+\end{tabular}
+\caption{Published results of the 15 reviewed works. ST3 = subtask 3, 
+ECE = expected calibration error.}
+\label{tab:sota}
+\end{table*}
+
+\item \textbf{State of the art.}
+
+Our work is related to three research areas: detection of persuasion and manipulation techniques,
+confidence estimation for LLM outputs, and LLM-assisted annotation.
+Table~\ref{tab:sota} lists published numbers of 15 selected works with the dataset and split for each of them.
+
+\textit{Persuasion and manipulation detection}
+On SemEval-2023 Task~3~\cite{piskorski-etal-2023-semeval}, which is our English and Polish source, the best fine-tuned encoders
+reach 0.376 test micro-F1 for english and 0.430 for polish ~\cite{purificato-navigli-2023-apatt,hromadka-etal-2023-kinitveraai},
+while macro-F1 stays below 0.18, so rare techniques are rarely detected.
+On MIPD~\cite{modzelewski-etal-2024-mipd}, fine-tuned Polish encoders reach a weighted F1 of 0.47.
+Prompted LLMs mostly has slightly worse F1 scores than fine-tuned encoders, but detect rare persuasion and manipulation techniques better~\cite{hasanain-etal-2024-gpt} -
+a zero-shot GPT-4o-mini prompt won a recent Polish persuasion shared task~\cite{jose-greenstadt-2025-llms}.
+We found no evaluation of open Polish LLMs on these tasks.
+
+\textit{Confidence of LLM outputs}
+Majority voting on outputs improves accuracy~\cite{wang2023selfconsistency},
+and consistency among samples detects hallucinations better than token log-probabilities~\cite{manakul-etal-2023-selfcheckgpt}.
+Verbalised confidence (e.g. "i am sure for 80\%") is also often better calibrated than token probabilities~\cite{tian-etal-2023-just}.
+However for text classification consistency over four samples was the weakest of these three methods (consistency, verbalised, token log-prob),
+partly because its scores take few distinct values~\cite{merdjanovska-etal-2026-evaluation} and verbalised and token log-probabilities give continous values.
+
+\textit{LLMs as annotators}
+LLMs can outperform crowd workers~\cite{gilardi2023chatgpt},
+but still their accuracy varies across reruns even with set seeds and settings~\cite{atil-etal-2025-non}.
+Most similar to our work, \newcite{pangakis2025keeping} rerun GPT-4 at least 5 times on 27 binary tasks
+and found that fully consistent labels are almost 20 percentage points more accurate than the rest.
+
+\textit{Space for research}
+Evidence on rerun agreement comes from English with binary or single-label tasks,
+but no study checks how many items can be labelled automatically for a fixed accuracy (eg 95\%) across different routing methods (verbalised confidence, token log-probabilities, consistency).
+We test this for multilabel persuasion and manipulation annotation in Polish and English with open models.
+
+
 
 \item \textbf{Datasets.}
 All three sources are publicly available, downloaded and ready (Table~\ref{tab:datasets}); label definitions are summarised in Table~\ref{tab:labels} and label frequencies in Figure~\ref{fig:labels}. Polish data are primary; English SemEval is an additional source for cross-lingual comparison.
