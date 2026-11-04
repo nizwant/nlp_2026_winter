@@ -236,31 +236,31 @@ Our work is related to three research areas: detection of persuasion and manipul
 confidence estimation for LLM outputs, and LLM-assisted annotation.
 Table~\ref{tab:sota} lists published numbers of 15 selected works with the dataset and split for each of them.
 
-\textit{Persuasion and manipulation detection}
+\textit{Persuasion and manipulation detection.}
 On SemEval-2023 Task~3~\cite{piskorski-etal-2023-semeval}, which is our English and Polish source, the best fine-tuned encoders
-reach 0.376 test micro-F1 for english and 0.430 for polish ~\cite{purificato-navigli-2023-apatt,hromadka-etal-2023-kinitveraai},
+reach 0.376 test micro-F1 for English and 0.430 for Polish~\cite{purificato-navigli-2023-apatt,hromadka-etal-2023-kinitveraai},
 while macro-F1 stays below 0.18, so rare techniques are rarely detected.
 On MIPD~\cite{modzelewski-etal-2024-mipd}, fine-tuned Polish encoders reach a weighted F1 of 0.47.
-Prompted LLMs mostly has slightly worse F1 scores than fine-tuned encoders, but detect rare persuasion and manipulation techniques better~\cite{hasanain-etal-2024-gpt} -
+Prompted LLMs mostly have slightly worse F1 scores than fine-tuned encoders, but detect rare persuasion and manipulation techniques better~\cite{hasanain-etal-2024-gpt} -
 a zero-shot GPT-4o-mini prompt won a recent Polish persuasion shared task~\cite{jose-greenstadt-2025-llms}.
 We found no evaluation of open Polish LLMs on these tasks.
 
-\textit{Confidence of LLM outputs}
+\textit{Confidence of LLM outputs.}
 Majority voting on outputs improves accuracy~\cite{wang2023selfconsistency},
 and consistency among samples detects hallucinations better than token log-probabilities~\cite{manakul-etal-2023-selfcheckgpt}.
-Verbalised confidence (e.g. "i am sure for 80\%") is also often better calibrated than token probabilities~\cite{tian-etal-2023-just}.
+Verbalised confidence (e.g. "I am sure for 80\%") is also often better calibrated than token probabilities~\cite{tian-etal-2023-just}.
 However for text classification consistency over four samples was the weakest of these three methods (consistency, verbalised, token log-prob),
 partly because its scores take few distinct values~\cite{merdjanovska-etal-2026-evaluation} and verbalised and token log-probabilities give continous values.
 
-\textit{LLMs as annotators}
+\textit{LLMs as annotators.}
 LLMs can outperform crowd workers~\cite{gilardi2023chatgpt},
 but still their accuracy varies across reruns even with set seeds and settings~\cite{atil-etal-2025-non}.
 Most similar to our work, \newcite{pangakis2025keeping} rerun GPT-4 at least 5 times on 27 binary tasks
 and found that fully consistent labels are almost 20 percentage points more accurate than the rest.
 
-\textit{Space for research}
+\textit{Space for research.}
 Evidence on rerun agreement comes from English with binary or single-label tasks,
-but no study checks how many items can be labelled automatically for a fixed accuracy (eg 95\%) across different routing methods (verbalised confidence, token log-probabilities, consistency).
+but no study checks how many items can be labelled automatically for a fixed accuracy (e.g. 95\%) across different routing methods (verbalised confidence, token log-probabilities, consistency).
 We test this for multilabel persuasion and manipulation annotation in Polish and English with open models.
 
 
