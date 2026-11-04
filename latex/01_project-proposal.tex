@@ -28,7 +28,7 @@
 \title{Is LLM self-consistency a usable signal for routing annotation work?\\Project Proposal for NLP Course, Winter 2026/27}
 % https://www.overleaf.com/project/63440c16442dba647b52a1ae
 \author{Tymoteusz Urban \\
-  Album number \\
+  320665 \\
   {\tt 01171272@pw.edu.pl} \\\And
   Sebastian Trojan \\
   320664 \\
@@ -191,10 +191,10 @@ Work & Task / method & Data (language), split & Model & Result \\
 \newcite{hromadka-etal-2023-kinitveraai} & One model fine-tuned on all languages
   & SemEval-2023 T3 ST3 (PL, EN), official test & XLM-R-large & micro-F1: PL 0.430 (1st place), EN 0.362 \\
 \newcite{modzelewski-etal-2024-mipd} & Multilabel detection of 11 manipulation techniques in articles
-  & MIPD (PL), test, 1,521 articles & HerBERT-large & weighted F1 0.47 (mean of 5 seeds) \\
+  & MIPD (PL), test, 1521 articles & HerBERT-large & weighted F1 0.47 (mean of 5 seeds) \\
 \newcite{hasanain-etal-2024-gpt} & Prompted GPT-4 compared with fine-tuned encoders
-  & ArPro (AR), test; SemEval-2023 T3 (PL), dev & XLM-R, GPT-4
-  & ArPro micro-F1: XLM-R 0.608, GPT-4 3-shot 0.467; PL dev: GPT-4 zero-shot 0.071 \\
+  & ArPro (AR), test & XLM-R, GPT-4
+  & micro-F1: XLM-R 0.608, GPT-4 0.467; macro-F1: XLM-R 0.128, GPT-4 0.212 \\
 \newcite{jose-greenstadt-2025-llms} & Zero-shot prompting, 25 techniques
   & SlavicNLP 2025 subtask 2 (PL), official test & GPT-4o-mini & micro-F1 0.419 (1st place), macro-F1 0.296 \\
 \hline
@@ -204,7 +204,7 @@ Work & Task / method & Data (language), split & Model & Result \\
 \newcite{manakul-etal-2023-selfcheckgpt} & Agreement between samples to detect hallucinations
   & WikiBio GPT-3 (EN), all 1,908 sentences & GPT-3 & AUC-PR 0.934 (token log-prob: 0.832) \\
 \newcite{tian-etal-2023-just} & Model states its own confidence
-  & TriviaQA (EN), validation, 1,000 questions & GPT-3.5-turbo & ECE 0.050 (token prob: 0.140) \\
+  & TriviaQA (EN), validation, 1000 questions & GPT-3.5-turbo & ECE reduced by a relative 50\% in many settings \\
 \newcite{merdjanovska-etal-2026-evaluation} & Compares consistency, stated confidence and log-prob for classification
   & SST-2 and SST-5 test, Yahoo and ESCI samples (EN), average & Qwen3-32B
   & AUROC: consistency 0.573, stated 0.661, log-prob 0.623 \\
@@ -213,13 +213,13 @@ Work & Task / method & Data (language), split & Model & Result \\
 \hline
 \multicolumn{5}{@{}l}{\textit{LLMs as annotators}}\\
 \newcite{gilardi2023chatgpt} & Zero-shot annotation compared with crowd workers
-  & 6,183 tweets and news articles (EN) & ChatGPT & accuracy about 0.25 higher than MTurk \\
+  & 6183 tweets and news articles (EN) & ChatGPT & accuracy about 0.25 higher than MTurk \\
 \newcite{atil-etal-2025-non} & Ten runs with temperature 0 and fixed seed
-  & MMLU college math (EN), 100 questions & GPT-4o & accuracy between runs from 0.44 to 0.88 \\
+  & MMLU college math (EN), 100 questions & GPT-4o & median accuracy 0.69 \\
 \newcite{li-etal-2023-coannotating} & Splits items between LLM and humans by answer entropy
-  & TempoWiC (EN), test, 40\% of items labelled by LLM & RoBERTa & macro-F1 0.569 (random split: 0.532) \\
+  & TempoWiC (EN), test, 40\% of items labelled by LLM & ChatGPT (annotation), RoBERTa (classification) & macro-F1 0.569 (random split: 0.532) \\
 \newcite{pangakis2025keeping} & Consistency over at least 5 reruns
-  & 27 tasks (EN), 1,000 human-labelled items each & GPT-4 & accuracy of fully consistent labels 0.194 higher \\
+  & 27 tasks (EN), 1000 human-labelled items each & GPT-4 & accuracy with consistent labels 0.194 higher than the rest \\
 \hline
 \end{tabular}
 \caption{Published results of the 15 reviewed works. ST3 = subtask 3, 
@@ -234,12 +234,12 @@ confidence estimation for LLM outputs, and LLM-assisted annotation.
 Table~\ref{tab:sota} lists published numbers of 15 selected works with the dataset and split for each of them.
 
 \textit{Persuasion and manipulation detection.}
-On SemEval-2023 Task~3~\cite{piskorski-etal-2023-semeval}, which is our English and Polish source, the best fine-tuned encoders
+On SemEval-2023 Task~3~\cite{piskorski-etal-2023-semeval}, which is our English and Polish source, the best fine-tuned models
 reach 0.376 test micro-F1 for English and 0.430 for Polish~\cite{purificato-navigli-2023-apatt,hromadka-etal-2023-kinitveraai},
 while macro-F1 stays below 0.18, so rare techniques are rarely detected.
 On MIPD~\cite{modzelewski-etal-2024-mipd}, fine-tuned Polish encoders reach a weighted F1 of 0.47.
-Prompted LLMs mostly have slightly worse F1 scores than fine-tuned encoders, but detect rare persuasion and manipulation techniques better~\cite{hasanain-etal-2024-gpt} -
-a zero-shot GPT-4o-mini prompt won a recent Polish persuasion shared task~\cite{jose-greenstadt-2025-llms}.
+Prompted LLMs mostly have worse F1 scores than fine-tuned encoders, but detect rare persuasion and manipulation techniques better~\cite{hasanain-etal-2024-gpt} -
+a zero-shot chain-of-thought GPT-4o-mini prompt won a recent Polish persuasion shared task~\cite{jose-greenstadt-2025-llms}.
 We found no evaluation of open Polish LLMs on these tasks.
 
 \textit{Confidence of LLM outputs.}
@@ -248,6 +248,7 @@ and consistency among samples detects hallucinations better than token log-proba
 Verbalised confidence (e.g. "I am sure for 80\%") is also often better calibrated than token probabilities~\cite{tian-etal-2023-just}.
 However for text classification consistency over four samples was the weakest of these three methods (consistency, verbalised, token log-prob),
 partly because its scores take few distinct values~\cite{merdjanovska-etal-2026-evaluation} and verbalised and token log-probabilities give continous values.
+We include work \newcite{geifman2017selective}, which introduces selective classification and risk-coverage terms for deep networks.
 
 \textit{LLMs as annotators.}
 LLMs can outperform crowd workers~\cite{gilardi2023chatgpt},
@@ -349,7 +350,7 @@ Total & & 17\\
 \item \textbf{Declaration of LLM use.}
 OpenAI Codex supported drafting, language editing and \LaTeX{} formatting. Abstract generation based on the body of the proposal. The authors are responsible for the final content.
 
-Claude Code was used to help with finding adequate literature and SOTA solutions, as well as to generate a table with summary. 
+Claude Code was used to help with finding adequate literature and SOTA solutions as well as to generate a table with summary (which was proof checked and edited).
 \end{enumerate}
 
 \bibliographystyle{acl}
