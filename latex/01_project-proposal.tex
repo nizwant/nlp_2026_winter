@@ -69,7 +69,7 @@ Figure~\ref{fig:pipeline} summarises the workflow.
   branch/.style={stage,text width=2.65cm,font=\scriptsize},
   analysis/.style={branch,minimum height=1.55cm},
   flow/.style={-{Latex[length=1.6mm]},semithick,draw=black!65}]
-\node[stage] (data) {\textbf{Three gold-labelled data sources}\\SemEval English and Polish paragraphs; MIPD articles\\Document-disjoint splits};
+\node[stage] (data) {\textbf{Three gold-labelled data sources}\\SemEval English and Polish paragraphs; MIPD articles};
 \node[stage,below=of data] (prompts) {\textbf{Three prompts}\\Polish/English zero-shot; Polish few-shot};
 \node[stage,below=of prompts] (runs) {\textbf{Three models; five reruns per batch}\\Three independent seed schedules};
 \node[analysis,below=6mm of runs.south,xshift=-1.8cm] (prediction)
@@ -103,6 +103,9 @@ Figure~\ref{fig:pipeline} summarises the workflow.
 (i) Consistency--correctness analyses per model, dataset and supported label, with uncertainty estimates and confidence baselines.
 (ii) Risk--coverage and cost--quality curves, including comparison with single-run routing and a selected operating point (if feasible).
 (iii) Reproducible prompts, code, settings and outputs; sensitive outputs remain private.
+
+\textit{Risks and responses.}
+Pilot runtime will determine a feasible shared sample and GPU settings. Audit data/model licences, missing labels and document leakage. Report rare-label limitations; route invalid outputs to humans. Record uncertainty and examine at least 20 misclassified examples grouped by error type.
 
 \textit{Timeline and ownership.}
 Table~\ref{tab:work-plan} presents weekly tasks, milestones and individual responsibilities.
@@ -142,8 +145,6 @@ Final results verification (S); report revision and presentation video (T); fina
 \label{tab:work-plan}
 \end{table}
 
-\textit{Risks and responses.}
-Pilot runtime will determine a feasible shared sample and GPU settings. Audit data/model licences, missing labels and document leakage. Report rare-label limitations; route invalid outputs to humans. Record uncertainty and examine at least 20 misclassified examples grouped by error type.
 
 \item \textbf{Approach and research methodology.}
 \textit{Data and models.}
