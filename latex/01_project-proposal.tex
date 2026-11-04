@@ -104,9 +104,6 @@ Figure~\ref{fig:pipeline} summarises the workflow.
 (ii) Risk--coverage and cost--quality curves, including comparison with single-run routing and a selected operating point (if feasible).
 (iii) Reproducible prompts, code, settings and outputs; sensitive outputs remain private.
 
-\textit{Preliminary status.}
-All three datasets are downloaded and profiled (status: ready; see Datasets); model experiments have not yet been run.
-
 \textit{Timeline and ownership.}
 Table~\ref{tab:work-plan} presents weekly tasks, milestones and individual responsibilities.
 
@@ -266,7 +263,7 @@ We test this for multilabel persuasion and manipulation annotation in Polish and
 
 
 \item \textbf{Datasets.}
-All three sources are publicly available, downloaded and ready (Table~\ref{tab:datasets}); label definitions are summarised in Table~\ref{tab:labels} and label frequencies in Figure~\ref{fig:labels}. Polish data are primary; English SemEval is an additional source for cross-lingual comparison.
+All three sources are READY: publicly available and downloaded (Table~\ref{tab:datasets}); label definitions are summarised in Table~\ref{tab:labels} and label frequencies in Figure~\ref{fig:labels}. Polish data are primary; English SemEval is an additional source for cross-lingual comparison.
 
 \textit{SemEval-2023 Task~3}~\cite{piskorski-etal-2023-semeval} was created for a multilingual shared task on news genre, framing and persuasion techniques. It contains news and web articles (2020--mid~2022) from mainstream and alternative outlets on topics such as COVID-19, climate change, migration and the war in Ukraine. We use subtask~3: paragraph-level multilabel detection of 23 persuasion techniques grouped into six categories; only 19 occur in the English data. We downloaded the English and Polish data from the UIUC team's GitHub mirror\footnote{\url{https://github.com/yrf1/SemEval23-Task-3-UIUC-Team}}; it is used for research purposes only. Test gold labels are not public, so only train and dev are used; 16 Polish label rows without matching text are dropped.
 
