@@ -265,7 +265,7 @@ We test this for multilabel persuasion and manipulation annotation in Polish and
 
 
 \item \textbf{Datasets.}
-All three sources are READY: publicly available and downloaded (Table~\ref{tab:datasets}); label definitions are summarised in Table~\ref{tab:labels} and label frequencies in Figure~\ref{fig:labels}. Polish data are primary; English SemEval is an additional source for cross-lingual comparison.
+All three sources are READY: publicly available and downloaded; dataset sizes are summarised in Table~\ref{tab:datasets}. Label definitions and label frequencies are provided in Appendix~\ref{app:datasets} (Table~\ref{tab:labels}; Figure~\ref{fig:labels}). Polish data are primary; English SemEval is an additional source for cross-lingual comparison.
 
 \textit{SemEval-2023 Task~3}~\cite{piskorski-etal-2023-semeval} was created for a multilingual shared task on news genre, framing and persuasion techniques. It contains news and web articles (2020--mid~2022) from mainstream and alternative outlets on topics such as COVID-19, climate change, migration and the war in Ukraine. We use subtask~3: paragraph-level multilabel detection of 23 persuasion techniques grouped into six categories; only 19 occur in the English data. We downloaded the English and Polish data from the UIUC team's GitHub mirror\footnote{\url{https://github.com/yrf1/SemEval23-Task-3-UIUC-Team}}; it is used for research purposes only. Test gold labels are not public, so only train and dev are used; 16 Polish label rows without matching text are dropped.
 
@@ -287,43 +287,6 @@ MIPD PL (article) & 15,356 & 15,356 & 11/11 & 544 & 76\% \\
 \caption{Dataset sizes. SemEval: train+dev (EN 446+90, PL 145+49 articles); MIPD: official train/validation/test (10,749/3,086/1,521). Labels = techniques present / taxonomy size; Empty = items with no technique.}
 \label{tab:datasets}
 \end{table}
-
-\begin{figure*}[t]
-\centering
-\includegraphics[width=\textwidth]{img/label_distribution.pdf}
-\caption{Label frequencies. Left: SemEval-2023 Task~3 train+dev (\% of paragraphs; EN in blue, PL in red). Right: MIPD manipulation labels across all splits (\% of all articles; 76\% have no technique label).}
-\label{fig:labels}
-\end{figure*}
-
-\begin{table*}[t]
-\centering
-\scriptsize
-\setlength{\tabcolsep}{3pt}
-\renewcommand{\arraystretch}{0.95}
-\begin{tabular}{@{}p{2.35cm}p{2.55cm}@{\hspace{8pt}}p{2.4cm}p{2.55cm}@{\hspace{8pt}}p{1.9cm}p{2.95cm}@{}}
-\hline
-\multicolumn{4}{@{}l}{\textbf{SemEval-2023 Task~3} (paragraph level)} & \multicolumn{2}{l@{}}{\textbf{MIPD} (article level)}\\
-\hline
-\multicolumn{2}{@{}l}{\textit{Justification}} & \multicolumn{2}{l}{\textit{Call}} & Cherry Picking & Selective data supporting a claim \\
-Appeal to Authority & Cites an authority as support & Slogans & Brief, striking phrase & Quote Mining & Distorts statements via selective excerpts \\
-Appeal to Popularity & ``Everybody agrees'' & Appeal to Time$^\dagger$ & The time to act is now & Anecdote & Personal stories against statistical evidence \\
-Appeal to Values$^\dagger$ & Links idea to positive values & Conversation Killer & Discourages further discussion & Whataboutism & Deflects via an unrelated argument \\
-Appeal to Fear-Prejudice & Exploits fear or prejudice & \multicolumn{2}{l}{\textit{Manipulative wording}} & Strawman & Attacks a misrepresented argument \\
-Flag Waving & Appeals to group pride or benefit & Loaded Language & Emotionally charged words & Leading Questions & Questions implying a set conclusion \\
-\multicolumn{2}{@{}l}{\textit{Simplification}} & Repetition & Repeats words or phrases to persuade & Appeal to Emotion & Manipulates readers' emotions \\
-Causal Oversimplification & Assumes a single cause & Exaggeration-Minimisation & Over- or understates & False Cause & Causation from mere correlation \\
-False Dilemma-No Choice & Only two options presented & Obfuscation-Vagueness-Confusion & Deliberately unclear wording & Exaggeration & Over- or understates facts \\
-Consequential Oversimplification$^\dagger$ & Unproven chain of consequences & \multicolumn{2}{l}{\textit{Attack on reputation}} & Reference Error & Cites unreliable or false sources \\
-\multicolumn{2}{@{}l}{\textit{Distraction}} & Name Calling-Labeling & Loaded labels for a target & Misleading Clickbait & Headline contradicting the article \\
-Straw Man & Refutes a distorted argument & Doubt & Questions target's credibility & & \\
-Red Herring & Diverts to another topic & Guilt by Association & Links target to a disliked group & & \\
-Whataboutism & Counter-accusation instead of answer & Appeal to Hypocrisy & Charges target with hypocrisy & & \\
- & & Questioning the Reputation$^\dagger$ & Attacks character or morals & & \\
-\hline
-\end{tabular}
-\caption{Label taxonomies with abridged definitions (SemEval: official guidelines, grouped by the six official categories; MIPD: dataset documentation). $^\dagger$Absent from English SemEval data.}
-\label{tab:labels}
-\end{table*}
 
 \item \textbf{Data statement.}
 SemEval-2023 Task~3 EN/PL (research use) and MIPD (CC BY-NC-ND~4.0) are used non-commercially with attribution. All texts are publicly available news and web articles. They contain no personal data beyond public figures named in news reporting, and we collect none. We do not attempt to identify authors, modify the datasets or fine-tune models on them.
@@ -354,7 +317,52 @@ OpenAI Codex supported drafting, language editing and \LaTeX{} formatting. Abstr
 Claude Code was used to help with finding adequate literature and SOTA solutions as well as to generate a table with summary (which was proof checked and edited).
 \end{enumerate}
 
+\clearpage
 \bibliographystyle{acl}
 \bibliography{references}
 
+\clearpage
+\appendix
+\onecolumn
+\section{Dataset details}
+\label{app:datasets}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{img/label_distribution.pdf}
+\caption{Label frequencies. Left: SemEval-2023 Task~3 train+dev (\% of paragraphs; EN in blue, PL in red). Right: MIPD manipulation labels across all splits (\% of all articles; 76\% have no technique label).}
+\label{fig:labels}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{0.95}
+\begin{tabular}{@{}p{2.35cm}p{2.55cm}@{\hspace{8pt}}p{2.4cm}p{2.55cm}@{\hspace{8pt}}p{1.9cm}p{2.95cm}@{}}
+\hline
+\multicolumn{4}{@{}l}{\textbf{SemEval-2023 Task~3} (paragraph level)} & \multicolumn{2}{l@{}}{\textbf{MIPD} (article level)}\\
+\hline
+\multicolumn{2}{@{}l}{\textit{Justification}} & \multicolumn{2}{l}{\textit{Call}} & Cherry Picking & Selective data supporting a claim \\
+Appeal to Authority & Cites an authority as support & Slogans & Brief, striking phrase & Quote Mining & Distorts statements via selective excerpts \\
+Appeal to Popularity & ``Everybody agrees'' & Appeal to Time$^\dagger$ & The time to act is now & Anecdote & Personal stories against statistical evidence \\
+Appeal to Values$^\dagger$ & Links idea to positive values & Conversation Killer & Discourages further discussion & Whataboutism & Deflects via an unrelated argument \\
+Appeal to Fear-Prejudice & Exploits fear or prejudice & \multicolumn{2}{l}{\textit{Manipulative wording}} & Strawman & Attacks a misrepresented argument \\
+Flag Waving & Appeals to group pride or benefit & Loaded Language & Emotionally charged words & Leading Questions & Questions implying a set conclusion \\
+\multicolumn{2}{@{}l}{\textit{Simplification}} & Repetition & Repeats words or phrases to persuade & Appeal to Emotion & Manipulates readers' emotions \\
+Causal Oversimplification & Assumes a single cause & Exaggeration-Minimisation & Over- or understates & False Cause & Causation from mere correlation \\
+False Dilemma-No Choice & Only two options presented & Obfuscation-Vagueness-Confusion & Deliberately unclear wording & Exaggeration & Over- or understates facts \\
+Consequential Oversimplification$^\dagger$ & Unproven chain of consequences & \multicolumn{2}{l}{\textit{Attack on reputation}} & Reference Error & Cites unreliable or false sources \\
+\multicolumn{2}{@{}l}{\textit{Distraction}} & Name Calling-Labeling & Loaded labels for a target & Misleading Clickbait & Headline contradicting the article \\
+Straw Man & Refutes a distorted argument & Doubt & Questions target's credibility & & \\
+Red Herring & Diverts to another topic & Guilt by Association & Links target to a disliked group & & \\
+Whataboutism & Counter-accusation instead of answer & Appeal to Hypocrisy & Charges target with hypocrisy & & \\
+ & & Questioning the Reputation$^\dagger$ & Attacks character or morals & & \\
+\hline
+\end{tabular}
+\caption{Label taxonomies with abridged definitions (SemEval: official guidelines, grouped by the six official categories; MIPD: dataset documentation). $^\dagger$Absent from English SemEval data.}
+\label{tab:labels}
+\end{table}
+
+\clearpage
 \end{document}
