@@ -2,7 +2,7 @@
 
 ## Project description
 
-The project is a part of the Natural Language Processing course at the Warsaw University of Technology. The project's goal is to ...
+The project is a part of the Natural Language Processing course at the Warsaw University of Technology. The project's goal is to check whether self-consistency across LLM reruns predicts correctness of multilabel annotations of manipulation techniques in English and Polish texts and supports cost-effective human-model routing. Negative results are considered valid research outcomes.
 
 Authors: Tymoteusz Urban, Sebastian Trojan, Mateusz Nizwantowski  
 Supervisor: Soveatin Kuntur - soveatin.kuntur.dokt@pw.edu.pl
