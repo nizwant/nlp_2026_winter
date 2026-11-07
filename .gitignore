@@ -230,9 +230,10 @@ __marimo__/
 /latex/*.lof
 /latex/*.lot
 /latex/*.out
-# /latex/*.pdf
+/latex/*.pdf
 /latex/*.run.xml
 /latex/*.synctex*
 /latex/*.toc
 /latex/*.xdv
 /latex/sota_*
+.DS_Store
