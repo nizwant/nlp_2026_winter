@@ -388,11 +388,16 @@ def analyse(run_dir: Path, n_resamples: int = 1000, min_support: int = 30) -> di
     # Server sanity checks. A greedy decision must be the more probable of the two decision tokens;
     # if it is not, the server changes the distribution after the model (for example with a
     # repetition penalty) and its sampler settings have to be pinned before any real run.
+    # An exact tie (probability 0.5, which half-precision logits produce now and then) agrees
+    # with either decision; ties are counted separately.
     have_p1 = ~np.isnan(p1_greedy).any(axis=1)
     checked = has_greedy & have_p1
-    greedy_matches_probability = (
-        float((greedy[checked] == (p1_greedy[checked] >= 0.5)).mean()) if checked.any() else float("nan")
-    )
+    greedy_matches_probability = float("nan")
+    exact_ties = 0
+    if checked.any():
+        p, d = p1_greedy[checked], greedy[checked]
+        exact_ties = int((p == 0.5).sum())
+        greedy_matches_probability = float(((p == 0.5) | (d == (p > 0.5))).mean())
     # Sampled decisions should follow the same probabilities, sharpened by the temperature. The
     # two rates below agree only roughly (each sampled run conditions on its own earlier
     # decisions), but a large gap means the sampler does not do what the config says.
@@ -430,6 +435,7 @@ def analyse(run_dir: Path, n_resamples: int = 1000, min_support: int = 30) -> di
         "accuracy_when_not_fully_consistent": float(correct[primary < 1.0].mean()) if (primary < 1.0).any() else float("nan"),
         "labels_with_bounded_probability": int(generations["n_bounded"].fillna(0).sum()),
         "greedy_matches_probability": greedy_matches_probability,
+        "greedy_exact_ties": exact_ties,
         "keys_in_label_order": float(ordered.astype(bool).mean()) if len(ordered) else float("nan"),
         "sampled_positive_rate": sampled_positive_rate,
         "expected_positive_rate": expected_positive_rate,
@@ -494,8 +500,8 @@ def report(summary: dict) -> str:
         f"(exactly right when identical: {summary['accuracy_when_fully_consistent']:.1%}, "
         f"otherwise: {summary['accuracy_when_not_fully_consistent']:.1%})",
         f"server checks: greedy decisions agreeing with their token probability "
-        f"{summary['greedy_matches_probability']:.1%} (must be 100%); answers with keys in label order "
-        f"{summary['keys_in_label_order']:.1%}",
+        f"{summary['greedy_matches_probability']:.1%} (must be 100%; {summary.get('greedy_exact_ties', 0)} exact ties); "
+        f"answers with keys in label order {summary['keys_in_label_order']:.1%}",
         f"               sampled decisions that are 1: {summary['sampled_positive_rate']:.2%}; expected from the "
         f"greedy probabilities at this temperature: about {summary['expected_positive_rate']:.2%}",
         "",

@@ -1,8 +1,13 @@
 """Run one experiment: repeated sampled generations, one greedy pass, and two confidence queries.
 
-    python -m routing.run configs/poc_semeval_pl.yaml
-    python -m routing.run configs/poc_semeval_pl.yaml --limit 20      # quick check
-    python -m routing.run configs/poc_semeval_pl.yaml --fake          # no model needed
+    python -m routing.run configs/bielik.yaml                              # SemEval PL pilot, prompt P1
+    python -m routing.run configs/bielik.yaml --source mipd --prompt p3    # other data or prompt
+    python -m routing.run configs/bielik.yaml --limit 20                   # quick check
+    python -m routing.run configs/bielik.yaml --fake                       # no model needed
+
+A config names the model and the sampling settings; source, role and prompt can be overridden on
+the command line. Unless the config gives a run_name, the run is called
+<model_key>_<source>_<role>_<prompt>.
 
 Per item the run produces, in this order (each kind is one stage, timed separately):
 
@@ -61,12 +66,18 @@ DEFAULTS = {
 }
 
 
-def load_config(path: Path) -> dict:
+def load_config(path: Path, **overrides) -> dict:
+    """Read a config file; `overrides` (source, role, prompt, ...) replace its values when not None."""
     with open(path, encoding="utf-8") as handle:
         config = {**DEFAULTS, **yaml.safe_load(handle)}
-    for key in ("run_name", "source", "role", "engine"):
+    config.update({key: value for key, value in overrides.items() if value is not None})
+    for key in ("source", "role", "engine"):
         if key not in config:
             raise KeyError(f"{path}: missing required key {key!r}")
+    if "run_name" not in config:
+        if "model_key" not in config:
+            raise KeyError(f"{path}: give run_name or model_key")
+        config["run_name"] = "_".join([config["model_key"], config["source"], config["role"], config["prompt"]])
     return config
 
 
@@ -339,12 +350,24 @@ async def run(config: dict, engine: Engine | None = None, show_progress: bool = 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("config", type=Path)
+    parser.add_argument("--source", help="override the data source")
+    parser.add_argument("--role", help="override the role (pilot, calibration, ...)")
+    parser.add_argument("--prompt", help="override the prompt (p1, p2, p3)")
+    parser.add_argument("--batches", type=int, help="override the number of seed batches")
+    parser.add_argument("--concurrency", type=int, help="override the number of parallel requests")
     parser.add_argument("--limit", type=int, help="only the first N items")
-    parser.add_argument("--run-name", help="override the run name from the config")
+    parser.add_argument("--run-name", help="override the run name")
     parser.add_argument("--fake", action="store_true", help="use the built-in fake engine instead of a model")
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    config = load_config(
+        args.config,
+        source=args.source,
+        role=args.role,
+        prompt=args.prompt,
+        n_batches=args.batches,
+        max_concurrency=args.concurrency,
+    )
     if args.limit:
         config["limit"] = args.limit
     if args.fake:

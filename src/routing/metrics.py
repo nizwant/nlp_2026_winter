@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Callable
 
 import numpy as np
-from sklearn.metrics import average_precision_score, f1_score, roc_auc_score
+from sklearn.metrics import average_precision_score, f1_score, precision_score, recall_score, roc_auc_score
 
 
 def task_quality(gold: np.ndarray, predicted: np.ndarray) -> dict[str, float]:
@@ -20,6 +20,8 @@ def task_quality(gold: np.ndarray, predicted: np.ndarray) -> dict[str, float]:
     return {
         "micro_f1": float(f1_score(gold, predicted, average="micro", zero_division=0)),
         "macro_f1": float(per_label[supported].mean()) if supported.any() else float("nan"),
+        "micro_precision": float(precision_score(gold, predicted, average="micro", zero_division=0)),
+        "micro_recall": float(recall_score(gold, predicted, average="micro", zero_division=0)),
         "exact_set_accuracy": float((gold == predicted).all(axis=1).mean()),
         "n_items": int(gold.shape[0]),
         "n_supported_labels": int(supported.sum()),
