@@ -198,6 +198,19 @@ def item_signals(data: dict) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
     )
     if "disinformative" in items:
         table["disinformative"] = items["disinformative"].to_numpy()
+    # Decisions as bit strings in label order, for the quality after human correction.
+    table["gold_bits"] = ["".join(map(str, row)) for row in gold]
+    table["vote_bits"] = ["".join(map(str, row)) for row in vote]
+
+    # Single-run policy: the greedy answer with its own log-probability (and stated confidence).
+    greedy, has_greedy = data["greedy"][keep], data["has_greedy"][keep]
+    table["greedy_correct"] = np.where(has_greedy, (greedy == gold).all(axis=1), False)
+    table["greedy_bits"] = ["".join(map(str, row)) if ok else "" for row, ok in zip(greedy, has_greedy)]
+    table["single run: own log-probability"] = np.where(
+        has_greedy, _mean_log(signals.decision_confidence(p1_greedy, greedy)), np.nan
+    )
+    if data["config"].get("verbal_greedy"):
+        table["single run: verbalised overall"] = np.where(has_greedy, data["verbal_greedy_overall"][keep], np.nan)
     decision = {
         "consistency: vote share": np.stack([signals.label_agreement(s) for s in samples]) if n else np.zeros((0, 0)),
         "log-probability: teacher-forced": forced,
@@ -209,6 +222,11 @@ def item_signals(data: dict) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
         classical = signals.decision_confidence(baseline, vote)
         table["classical: TF-IDF logistic regression"] = _mean_log(classical)
         decision["classical: TF-IDF logistic regression"] = classical
+        # The baseline on its own: its prediction, scored by its own probability.
+        own = (baseline >= 0.5).astype(np.int8)
+        table["tfidf_correct"] = (own == gold).all(axis=1)
+        table["tfidf_bits"] = ["".join(map(str, row)) for row in own]
+        table["tfidf alone: own probability"] = _mean_log(signals.decision_confidence(baseline, own))
     table["control: fewer predicted labels"] = -table["n_predicted"].astype(float)
     table["control: shorter text"] = -table["n_words"].astype(float)
     table["control: random"] = rng.random(n)
