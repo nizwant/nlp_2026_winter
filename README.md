@@ -33,54 +33,90 @@ Supervisor: Soveatin Kuntur - soveatin.kuntur.dokt@pw.edu.pl
 
 The full plan to the end of the project, including the answer to every Phase 1 review point, is in [PLAN.md](PLAN.md).
 
+## What is in the repository
+
+The pipeline asks a language model which persuasion or manipulation techniques occur in a text, five times with different seeds, takes the majority vote per technique, and then checks which confidence signal best predicts that the voted label set is exactly right: agreement between the five runs (self-consistency), the model's token log-probability, its stated confidence, or trivial controls. The signals are then used to decide which items a model may label on its own and which go to a human.
+
+| Path | Content |
+| --- | --- |
+| `src/routing/` | `data`, `splits`, `prompts`, `fewshot`, `engines`, `run`, `signals`, `metrics`, `analyze`, `selective`, `route`, `cost`, `baseline_tfidf`, `annotate` |
+| `prompts/` | prompt templates, technique definitions in Polish and English, ids of the few-shot examples |
+| `configs/` | one YAML file per model, and the rates of the cost model |
+| `scripts/` | dataset download and preparation, vLLM start script |
+| `tests/` | unit tests and an end-to-end test with a fake engine (no GPU, no model) |
+| `notebooks/01_eda.ipynb` | exploratory data analysis, committed with outputs |
+| `data/` | prepared datasets and `data/splits/` with the role of every item |
+| `outputs/public/` | released model outputs (decisions only, no text) and `outputs/eda/` tables |
+| `latex/`, `deliverables/` | report sources and submitted PDFs |
+
 ## Setup
 
 ```bash
 mamba env create -f environment.yml     # or: conda env create -f environment.yml
 conda activate nlp-routing
 pip install -e .
-pytest -q                               # runs without a GPU and without a model
+pytest -q                               # 54 tests, about 25 s, no GPU and no model needed
 ```
 
-This environment holds the client, the evaluation code and the tests. The model itself is served separately by any OpenAI-compatible server (Ollama, llama.cpp server or vLLM); which one is used is a line in the config.
+The same environment as a container: `docker build -t nlp-routing . && docker run --rm nlp-routing` runs the tests.
+
+## Reproduce one result without a GPU
+
+The outputs of the first pilot run are in the repository (item ids and 0/1 decisions, no text), so its analysis can be repeated on any machine in under a minute:
+
+```bash
+python -m routing.baseline_tfidf semeval_pl                              # optional: adds the TF-IDF signal, 35 s
+python -m routing.analyze outputs/public/bielik_semeval_pl_pilot_p1
+```
+
+This prints the task quality of Bielik-11B-v3.0 on the Polish SemEval pilot subset (219 paragraphs) and, for every confidence signal, the AUROC for predicting that the voted label set is exactly right. Expected: micro-F1 0.285, exact-set accuracy 0.311, AUROC 0.569 for the Jaccard consistency score and 0.722 for the teacher-forced log-probability.
+
+## Run an experiment on a GPU
+
+The model is served by vLLM in an environment of its own; the client above talks to it over the OpenAI-compatible API.
+
+```bash
+# once: environment for the server (about 9 GB with PyTorch and CUDA libraries)
+mamba create -n vllm python=3.12 pip && conda activate vllm && pip install vllm==0.33.0
+
+# terminal 1: serve Bielik-11B-v3.0-Instruct, official 4-bit AWQ build (6.2 GB download on first start)
+scripts/serve_vllm.sh bielik
+
+# terminal 2: five sampled runs, one greedy run, scoring and stated confidence for every pilot paragraph
+conda activate nlp-routing
+python -m routing.run configs/bielik.yaml                       # about 14 min on an RTX 4070 SUPER (12 GB)
+python -m routing.analyze outputs/runs/bielik_semeval_pl_pilot_p1
+```
+
+Other data, roles and prompts use the same config: `python -m routing.run configs/bielik.yaml --source mipd --role calibration --prompt p3`. Add `--limit 20` for a quick check, or `--fake` to run the whole pipeline with a built-in fake engine (its numbers carry no meaning). An interrupted run continues where it stopped when the command is repeated.
+
+Routing, with thresholds chosen on one run and applied to another:
+
+```bash
+python -m routing.route --calibration outputs/runs/bielik_semeval_pl_calibration_p1 \
+                        --evaluation  outputs/runs/bielik_semeval_pl_pilot_p1
+```
+
+Measured on the 12 GB card with a desktop session running: 5.8 GiB for the weights, 9.5 GiB reserved by vLLM in total, context 8,192 tokens, about 620 output tokens per second at 16 parallel requests, 3.8 s per paragraph for all eight requests.
+
+Every run writes `outputs/runs/<run>/generations.jsonl` with one line per request (item id, seed, the 0/1 decision per technique, probabilities, token counts, latency) and `meta.json` with timings, GPU power draw and memory, package versions and the git commit. The log never contains the text. Before the results, the analysis prints three server checks: greedy decisions must agree with their own token probabilities, answers must list the techniques in the configured order, and the share of positive sampled decisions should be close to what the probabilities predict. Ollama's `/v1` endpoint fails the first two (fixed repetition penalty, sorted keys) and is not used.
+
+The test sets are locked: `routing.run` and `routing.baseline_tfidf` refuse the `test` role until `allow_test: true` (or `--allow-test`) is set, which happens only after the analysis plan is frozen in the Phase 2 report.
 
 ## Data
 
 The prepared files are in `data/`. Both sources are used for non-commercial research only; the two scripts below rebuild the prepared files from the original distributions.
 
-- **MIPD** (Modzelewski et al., EMNLP 2024), CC BY-NC-ND 4.0. `python scripts/download_mipd.py` downloads the files from the authors' repository (https://github.com/ArkadiusDS/MIPD, pinned commit) into `data/raw/mipd/` and builds `data/mipd/`.
+- **MIPD** (Modzelewski et al., EMNLP 2024), CC BY-NC-ND 4.0. `python scripts/download_mipd.py` downloads the files from the authors' repository (https://github.com/ArkadiusDS/MIPD, pinned commit) into `data/raw/mipd/` and builds `data/mipd/`, including the credible/disinformative label.
 - **SemEval-2023 Task 3, subtask 3** (Piskorski et al., 2023), English and Polish, for scientific research purposes only under the organisers' terms. Access is by registration at https://propaganda.math.unipd.it/semeval2023task3/; `python scripts/prepare_semeval.py --raw-dir <downloaded data folder>` builds `data/sem_eval/{en,pl}.csv` from the official files.
 
-`python -m routing.splits` then writes `data/splits/<source>.csv` with the role of every item (few-shot pool, pilot, calibration, test). The official splits are the boundaries: SemEval dev and the MIPD test split are the test sets.
+`python -m routing.splits` writes `data/splits/<source>.csv` with the role of every item. The official splits are the boundaries: SemEval train supplies the few-shot pool, the pilot subset and the calibration set, and SemEval dev is the test set; for MIPD the pilot comes from train, calibration from validation, and the official test split is the test set. `python -m routing.fewshot` chooses the few-shot examples (stored as item ids). `notebooks/01_eda.ipynb` describes the data.
 
-## Run the proof of concept
+## Other commands
 
-```bash
-# 1. serve a model with llama.cpp's server (GPU build)
-llama-server -hf speakleash/Bielik-11B-v3.0-Instruct-GGUF:Q4_K_M \
-    --host 127.0.0.1 --port 8080 -ngl 99 -c 12288 -np 4 --no-webui
-
-# 2. five sampled runs and one greedy run per item on the SemEval PL pilot subset
-python -m routing.run configs/poc_semeval_pl.yaml
-
-# 3. task quality, and how well each confidence signal predicts correctness
-python -m routing.analyze outputs/runs/poc_semeval_pl_bielik
-```
-
-`python -m routing.run configs/poc_semeval_pl.yaml --fake` runs the same pipeline with a built-in fake engine, which needs no model and is useful for checking an installation. Its numbers carry no meaning.
-
-The analysis prints three server checks before the results: greedy decisions must agree with their own token probabilities, answers must list the techniques in the configured order, and the share of positive sampled decisions should be close to what the probabilities predict. Ollama's `/v1` endpoint fails the first two (it applies a fixed repetition penalty and sorts the keys), so it is not used for real runs.
-
-Each run writes `outputs/runs/<run_name>/generations.jsonl` with one line per generation: item id, seed, the 0/1 decision per technique and, for the greedy run, the probability of each decision. The log never contains the text. `outputs/runs/` is not committed.
-
-## Repository layout
-
-| Path | Content |
+| Command | Purpose |
 | --- | --- |
-| `src/routing/` | `data`, `splits`, `prompts`, `engines`, `run`, `signals`, `metrics`, `analyze` |
-| `prompts/` | prompt templates and technique definitions in Polish and English |
-| `configs/` | one YAML file per experiment |
-| `scripts/` | dataset download and preparation |
-| `tests/` | unit tests and an end-to-end test with the fake engine |
-| `notebooks/` | data preparation and exploration |
-| `latex/`, `deliverables/` | report sources and submitted PDFs |
+| `python -m routing.baseline_tfidf` | TF-IDF with logistic regression: task baseline and a cheap confidence signal |
+| `python -m routing.annotate semeval_pl --annotator XY` | timed human annotation of a fixed sample, for the cost model |
+| `python -m routing.annotate --summary` | median annotation time and agreement between annotators |
+| `jupyter nbconvert --to notebook --execute --inplace notebooks/01_eda.ipynb` | regenerate the EDA and its figures |
