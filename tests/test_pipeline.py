@@ -81,7 +81,7 @@ def test_splits_are_disjoint_and_deterministic(source):
     assert first["item_id"].is_unique
     official_test = {"semeval_pl": "dev", "semeval_en": "dev", "mipd": "test"}[source]
     assert set(first.loc[first["role"] == "test", "original_set"]) == {official_test}
-    not_test = first[first["role"].isin(["fewshot", "pilot", "calibration"])]
+    not_test = first[first["role"].isin(["fewshot", "pilot", "calibration", "credible_check"])]
     assert official_test not in set(not_test["original_set"])
 
     # No text is shared between test and the roles used for development and calibration.
@@ -185,8 +185,20 @@ def test_batches_few_shot_and_the_test_lock(tmp_path, monkeypatch):
     summary = analyze.analyse(run_dir, n_resamples=20)
     assert len(summary["batches"]) == 3
     assert summary["requests"]["sample"]["total"] == 40 * 15
-    # Credible articles are counted separately and left out of the main tables.
-    assert summary["credible_articles"]["credible_items"] + summary["n_items_complete"] == 40
+    assert summary["n_items_complete"] == 40
+    assert summary["credible_articles"] is None  # the MIPD pilot holds disinformative articles only
+
 
     with pytest.raises(PermissionError):
         asyncio.run(run.run({**config, "role": "test"}, show_progress=False))
+
+
+@needs_data
+def test_mipd_roles_follow_the_credibility_label():
+    split = splits.make_split("mipd")
+    items = data.load_items("mipd").merge(split[["item_id", "role"]], on="item_id")
+    by_role = items.groupby("role")["disinformative"].agg(["size", "mean"])
+    assert by_role.loc["pilot"].tolist() == [100, 1.0]
+    assert by_role.loc["calibration"].tolist() == [600, 1.0]
+    assert by_role.loc["credible_check"].tolist() == [200, 0.0]
+    assert by_role.loc["test", "size"] == 1521

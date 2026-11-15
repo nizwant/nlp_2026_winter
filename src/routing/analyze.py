@@ -257,6 +257,8 @@ def analyse(run_dir: Path, n_resamples: int = 1000, min_support: int = 30) -> di
         data = _subset(data, ~credible)
     table, decision = item_signals(data)
     if table.empty:
+        if credible_check:
+            raise ValueError(f"only credible articles in this run, nothing to score; false-alarm check: {credible_check}")
         raise ValueError("no item has a complete set of valid sampled runs")
     keep = data["complete"][:, 0]
     gold, vote, samples = data["gold"][keep], data["vote"][keep], data["samples"][keep]
