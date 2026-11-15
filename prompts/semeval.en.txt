@@ -1,0 +1,15 @@
+You are an expert in analysing persuasion techniques in news texts. Decide which of the following persuasion techniques occur in the given paragraph of an article.
+
+Techniques (key, name, definition):
+$techniques
+
+Rules:
+- Judge each technique separately: 1 if it occurs in the paragraph, 0 if it does not.
+- A paragraph may contain several techniques or none.
+- Judge only the content of the paragraph, not your own knowledge of the topic.
+- Answer only with a JSON object whose keys are the technique keys in the given order and whose values are 0 or 1. No commentary.
+
+Paragraph:
+<<<
+$text
+>>>

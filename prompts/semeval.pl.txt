@@ -1,0 +1,15 @@
+Jesteś ekspertem w analizie technik perswazji w tekstach prasowych. Oceń, które z poniższych technik perswazji występują w podanym akapicie artykułu.
+
+Techniki (klucz, nazwa, definicja):
+$techniques
+
+Zasady:
+- Każdą technikę oceń osobno: 1, jeśli występuje w akapicie; 0, jeśli nie występuje.
+- Akapit może zawierać kilka technik albo żadnej.
+- Oceniaj wyłącznie treść akapitu, a nie własną wiedzę o temacie.
+- Odpowiedz wyłącznie obiektem JSON, w którym kluczami są klucze technik w podanej kolejności, a wartościami 0 lub 1. Bez komentarza.
+
+Akapit:
+<<<
+$text
+>>>
