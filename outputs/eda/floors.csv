@@ -1,0 +1,10 @@
+source,role,items,articles,exact-set accuracy of 'no technique',techniques with 30+ positives,gold positives
+SemEval PL,pilot,219,11,0.457,1,192
+SemEval PL,calibration,1002,66,0.445,10,1058
+SemEval PL,test,800,49,0.471,11,786
+SemEval EN,pilot,208,9,0.683,0,89
+SemEval EN,calibration,1003,44,0.617,6,593
+SemEval EN,test,1500,44,0.681,8,666
+MIPD,pilot,100,100,0.28,1,158
+MIPD,calibration,600,600,0.27,8,993
+MIPD,test,490,490,0.239,8,849

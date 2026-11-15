@@ -1,0 +1,8 @@
+source,official split,articles,items,median words,items without a technique,mean techniques per item,techniques present
+SemEval PL,train,145,2310,39,46.7%,0.95,23/23
+SemEval PL,dev,49,800,38,47.1%,0.98,23/23
+SemEval EN,train,446,9498,33,60.4%,0.62,19/23
+SemEval EN,dev,90,3127,19,64.2%,0.53,19/23
+MIPD,test,1521,1521,526,75.5%,0.56,11/11
+MIPD,train,10749,10749,544,75.8%,0.55,11/11
+MIPD,validation,3086,3086,554,76.5%,0.53,11/11
