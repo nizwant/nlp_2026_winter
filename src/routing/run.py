@@ -94,20 +94,58 @@ def _versions() -> dict:
     return versions
 
 
-def _gpu_memory_used_mib() -> int | None:
-    """Memory in use on the first GPU, or None when nvidia-smi is not available."""
-    if shutil.which("nvidia-smi") is None:
-        return None
-    done = subprocess.run(
-        ["nvidia-smi", "--query-gpu=memory.used", "--format=csv,noheader,nounits"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    try:
-        return int(done.stdout.strip().splitlines()[0])
-    except (IndexError, ValueError):
-        return None
+class GpuMonitor:
+    """Samples memory, utilisation and power draw of the first GPU while a stage runs.
+
+    The model server reserves its memory at start-up, so memory hardly moves during a run; the
+    power draw is what the cost model needs. Without nvidia-smi the monitor records nothing.
+    """
+
+    QUERY = ["nvidia-smi", "--query-gpu=memory.used,utilization.gpu,power.draw", "--format=csv,noheader,nounits"]
+
+    def __init__(self, interval_s: float = 5.0) -> None:
+        self.interval_s = interval_s
+        self.samples: list[tuple[float, float, float]] = []
+        self._task: asyncio.Task | None = None
+
+    async def _sample(self) -> None:
+        process = await asyncio.create_subprocess_exec(
+            *self.QUERY, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL
+        )
+        out, _ = await process.communicate()
+        try:
+            memory, utilisation, power = (float(x) for x in out.decode().strip().splitlines()[0].split(","))
+        except (IndexError, ValueError):
+            return
+        self.samples.append((memory, utilisation, power))
+
+    async def _loop(self) -> None:
+        while True:
+            await self._sample()
+            await asyncio.sleep(self.interval_s)
+
+    def start(self) -> None:
+        self.samples = []
+        if shutil.which("nvidia-smi") is not None:
+            self._task = asyncio.get_running_loop().create_task(self._loop())
+
+    async def stop(self) -> dict:
+        if self._task is not None:
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+            self._task = None
+            await self._sample()  # a short stage still gets one sample
+        if not self.samples:
+            return {}
+        memory, utilisation, power = zip(*self.samples)
+        return {
+            "gpu_memory_peak_mib": int(max(memory)),
+            "gpu_utilisation_mean_percent": round(sum(utilisation) / len(utilisation), 1),
+            "gpu_power_mean_watts": round(sum(power) / len(power), 1),
+        }
 
 
 def _finished(log_path: Path) -> dict[tuple[str, str, int], dict]:
@@ -197,7 +235,7 @@ async def run(config: dict, engine: Engine | None = None, show_progress: bool = 
     base_seed = int(config["base_seed"])
     semaphore = asyncio.Semaphore(int(config["max_concurrency"]))
     stages: dict[str, dict] = {}
-    peak_memory = _gpu_memory_used_mib()
+    monitor = GpuMonitor()
 
     def jobs_for(stage: str, done: dict) -> list[tuple]:
         """(item_id, seed, batch, temperature, decisions to assess) for everything still to do."""
@@ -262,17 +300,16 @@ async def run(config: dict, engine: Engine | None = None, show_progress: bool = 
                 counts["output_tokens"] += result.n_output_tokens or 0
                 progress.update(1)
 
+            monitor.start()
             started = time.perf_counter()
             await asyncio.gather(*(one(*job) for job in jobs))
             progress.close()
             wall = time.perf_counter() - started
-            used = _gpu_memory_used_mib()
-            if used is not None:
-                peak_memory = max(peak_memory or 0, used)
             stages[stage] = {
                 **counts,
                 "wall_seconds": round(wall, 2),
                 "output_tokens_per_second": round(counts["output_tokens"] / wall, 1) if wall > 0 else None,
+                **(await monitor.stop()),
             }
 
     total = {key: sum(stage[key] for stage in stages.values()) for key in ("generations", "invalid", "prompt_tokens", "output_tokens")}
@@ -286,7 +323,7 @@ async def run(config: dict, engine: Engine | None = None, show_progress: bool = 
         "output_tokens_per_second": round(total["output_tokens"] / wall, 1) if wall > 0 else None,
         **total,
         "stages": stages,
-        "gpu_memory_used_mib": peak_memory,
+        "gpu_memory_used_mib": max((s.get("gpu_memory_peak_mib", 0) for s in stages.values()), default=None) or None,
         "git": _git_state(),
         "versions": _versions(),
         "platform": platform.platform(),
