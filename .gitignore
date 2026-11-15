@@ -241,3 +241,4 @@ __marimo__/
 # Project: raw model outputs and raw downloads stay local
 outputs/runs/
 data/raw/
+outputs/baselines/
