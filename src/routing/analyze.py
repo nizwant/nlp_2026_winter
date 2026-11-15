@@ -33,8 +33,7 @@ MODEL_SIGNALS = (
     "consistency: Hamming agreement",
     "log-probability: voted set, teacher-forced",
     "log-probability: voted set, greedy pass",
-    "verbalised: overall",
-    "verbalised: product over labels",
+    "verbalised confidence",
 )
 
 
@@ -94,9 +93,7 @@ def assemble(run_dir: Path) -> dict:
 
     # Confidence queries count only if they assessed the decisions that are scored here.
     p1_forced = np.full((n_items, n_labels), np.nan)
-    verbal = np.full((n_items, n_labels), np.nan)
     verbal_overall = np.full(n_items, np.nan)
-    verbal_greedy = np.full((n_items, n_labels), np.nan)
     verbal_greedy_overall = np.full(n_items, np.nan)
     for row in range(n_items):
         target = vote[row].tolist()
@@ -104,15 +101,15 @@ def assemble(run_dir: Path) -> dict:
         if record and complete[row, 0] and record["labels"] == target and record.get("p1") is not None:
             p1_forced[row] = record["p1"]
         record = assessed["verbal"].get(row)
-        if record and complete[row, 0] and record["labels"] == target and record.get("verbal") is not None:
-            verbal[row], verbal_overall[row] = record["verbal"], record["verbal_overall"]
+        if record and complete[row, 0] and record["labels"] == target and record.get("verbal_overall") is not None:
+            verbal_overall[row] = record["verbal_overall"]
         if arrays["has_greedy"][row]:
             greedy = arrays["greedy"][row].tolist()
             record = assessed["verbal_greedy"].get(row)
-            if record and record["labels"] == greedy and record.get("verbal") is not None:
-                verbal_greedy[row], verbal_greedy_overall[row] = record["verbal"], record["verbal_overall"]
+            if record and record["labels"] == greedy and record.get("verbal_overall") is not None:
+                verbal_greedy_overall[row] = record["verbal_overall"]
             elif complete[row, 0] and greedy == target:
-                verbal_greedy[row], verbal_greedy_overall[row] = verbal[row], verbal_overall[row]
+                verbal_greedy_overall[row] = verbal_overall[row]
 
     return {
         "config": config,
@@ -123,9 +120,7 @@ def assemble(run_dir: Path) -> dict:
         "complete": complete,
         "vote": vote,
         "p1_forced": p1_forced,
-        "verbal": verbal,
         "verbal_overall": verbal_overall,
-        "verbal_greedy": verbal_greedy,
         "verbal_greedy_overall": verbal_greedy_overall,
         "generations": generations,
         **arrays,
@@ -170,7 +165,7 @@ def item_signals(data: dict) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
     items = data["items"][keep].reset_index(drop=True)
     gold, vote, samples = data["gold"][keep], data["vote"][keep], data["samples"][keep, 0]
     p1_forced, p1_greedy = data["p1_forced"][keep], data["p1_greedy"][keep]
-    verbal, verbal_overall = data["verbal"][keep], data["verbal_overall"][keep]
+    verbal_overall = data["verbal_overall"][keep]
     n = len(items)
 
     forced = signals.decision_confidence(p1_forced, vote)
@@ -192,8 +187,7 @@ def item_signals(data: dict) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
             "consistency: Hamming agreement": [signals.hamming_agreement(s) for s in samples],
             "log-probability: voted set, teacher-forced": _mean_log(forced),
             "log-probability: voted set, greedy pass": _mean_log(from_greedy),
-            "verbalised: overall": verbal_overall,
-            "verbalised: product over labels": _mean_log(verbal),
+            "verbalised confidence": verbal_overall,
         }
     )
     if "disinformative" in items:
@@ -210,12 +204,11 @@ def item_signals(data: dict) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
         has_greedy, _mean_log(signals.decision_confidence(p1_greedy, greedy)), np.nan
     )
     if data["config"].get("verbal_greedy"):
-        table["single run: verbalised overall"] = np.where(has_greedy, data["verbal_greedy_overall"][keep], np.nan)
+        table["single run: verbalised confidence"] = np.where(has_greedy, data["verbal_greedy_overall"][keep], np.nan)
     decision = {
         "consistency: vote share": np.stack([signals.label_agreement(s) for s in samples]) if n else np.zeros((0, 0)),
         "log-probability: teacher-forced": forced,
         "log-probability: greedy pass": from_greedy,
-        "verbalised": verbal,
     }
     baseline = _baseline_probabilities(data["config"]["source"], items["item_id"], data["labels"])
     if baseline is not None:
@@ -235,7 +228,8 @@ def item_signals(data: dict) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
 
 
 def _signal_columns(table: pd.DataFrame) -> list[str]:
-    return [c for c in table.columns if c.split(":")[0] in ("consistency", "log-probability", "verbalised", "classical", "control")]
+    families = ("consistency", "log-probability", "verbalised confidence", "classical", "control")
+    return [c for c in table.columns if c.split(":")[0] in families]
 
 
 def analyse(run_dir: Path, n_resamples: int = 1000, min_support: int = 30) -> dict:
@@ -352,7 +346,7 @@ def analyse(run_dir: Path, n_resamples: int = 1000, min_support: int = 30) -> di
         _policy(
             "5 sampled runs + verbalised confidence",
             correct,
-            table["verbalised: overall"].to_numpy(),
+            table["verbalised confidence"].to_numpy(),
             6,
             ["sample", "verbal"],
             stage_seconds,

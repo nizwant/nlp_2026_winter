@@ -11,8 +11,8 @@ the two decision tokens.
 Two further calls assess a given set of decisions (in the study: the majority vote):
     score      teacher forcing: the answer is appended to the prompt and the model's probability
                of every decision token is read off, without generating anything
-    verbalise  a follow-up turn asks the model to state, in percent, how likely each decision
-               and the whole answer are to be correct
+    verbalise  a follow-up turn asks the model to state, in percent, how likely the whole
+               answer is to be correct
 """
 
 from __future__ import annotations
@@ -52,7 +52,6 @@ class Generation:
     latency_s: float = 0.0
     error: str | None = None
     raw: str | None = None  # kept only for invalid outputs, for debugging
-    verbal: list[float] | None = None  # stated probability (0-1) that each assessed decision is right
     verbal_overall: float | None = None  # stated probability (0-1) that the whole answer is right
 
 
@@ -100,37 +99,31 @@ def answer_json(labels: Sequence[str], decisions: Sequence[int]) -> str:
     return json.dumps({label: int(value) for label, value in zip(labels, decisions)})
 
 
-OVERALL_KEY = "overall"
+CONFIDENCE_KEY = "confidence"
 
 
-def verbal_schema(labels: Sequence[str]) -> dict:
-    """JSON schema of the stated-confidence answer: a percentage per label, then one overall."""
-    percent = {"type": "integer", "minimum": 0, "maximum": 100}
-    keys = [*labels, OVERALL_KEY]
+def verbal_schema() -> dict:
+    """JSON schema of the stated-confidence answer: one percentage for the whole answer."""
     return {
         "type": "object",
-        "properties": {key: percent for key in keys},
-        "required": keys,
+        "properties": {CONFIDENCE_KEY: {"type": "integer", "minimum": 0, "maximum": 100}},
+        "required": [CONFIDENCE_KEY],
         "additionalProperties": False,
     }
 
 
-def parse_verbal(text: str, labels: Sequence[str]) -> tuple[list[float], float] | None:
-    """Stated probabilities (0-1) per label and overall, or None if the answer is not valid."""
+def parse_verbal(text: str) -> float | None:
+    """The stated probability (0-1) that the whole answer is right, or None if not valid."""
     try:
         obj = json.loads(text)
     except (json.JSONDecodeError, TypeError):
         return None
-    keys = [*labels, OVERALL_KEY]
-    if not isinstance(obj, dict) or set(obj) != set(keys):
+    if not isinstance(obj, dict) or set(obj) != {CONFIDENCE_KEY}:
         return None
-    values = []
-    for key in keys:
-        value = obj[key]
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 100:
-            return None
-        values.append(float(value) / 100.0)
-    return values[:-1], values[-1]
+    value = obj[CONFIDENCE_KEY]
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 100:
+        return None
+    return float(value) / 100.0
 
 
 def parse_decisions(text: str, labels: Sequence[str]) -> list[int] | None:
@@ -370,7 +363,14 @@ class OpenAIEngine:
         return result
 
     async def verbalise(self, messages, labels, decisions, followup, *, seed) -> Generation:
-        """Ask in a follow-up turn how likely the given decisions are to be correct."""
+        """Ask in a follow-up turn how likely the given answer is to be correct as a whole.
+
+        Only one value is asked for. A per-technique variant was tried on 12 pilot paragraphs
+        (15 Nov 2026): Bielik gave one constant value for all 23 techniques in six of them and
+        otherwise switched between "probability that the technique is present" and "probability
+        that the decision is right", under both wordings of the question. Such values cannot be
+        interpreted, so stated confidence is available at item level only.
+        """
         request = {
             "model": self.model,
             "messages": [
@@ -380,10 +380,10 @@ class OpenAIEngine:
             ],
             "seed": seed,
             "temperature": 0.0,
-            "max_tokens": self.max_tokens or 44 * (len(labels) + 1) + 64,
+            "max_tokens": 32,
             "response_format": {
                 "type": "json_schema",
-                "json_schema": {"name": "confidence", "schema": verbal_schema(labels), "strict": True},
+                "json_schema": {"name": "confidence", "schema": verbal_schema(), "strict": True},
             },
         }
         if self.extra_body:
@@ -403,13 +403,11 @@ class OpenAIEngine:
             n_output_tokens=getattr(usage, "completion_tokens", None),
             latency_s=latency,
         )
-        parsed = parse_verbal(text, labels)
-        if parsed is None:
+        result.verbal_overall = parse_verbal(text)
+        if result.verbal_overall is None:
             result.labels = None
             result.error = f"invalid_output (finish_reason={choice.finish_reason})"
             result.raw = text[:500]
-        else:
-            result.verbal, result.verbal_overall = parsed
         return result
 
 
@@ -470,14 +468,13 @@ class FakeEngine:
         if rng.random() < self.invalid_rate:
             return Generation(labels=None, error="invalid_output (fake)", raw="not json")
         confidence = np.where(np.asarray(decisions) == 1, latent, 1.0 - latent)
-        stated = np.round(confidence * 20) / 20  # stated values come in steps of five percent
         return Generation(
             labels=[int(value) for value in decisions],
-            verbal=[float(value) for value in stated],
+            # stated values come in steps of five percent
             verbal_overall=float(np.round(float(np.prod(confidence)) * 20) / 20),
             ordered=True,
             n_prompt_tokens=sum(len(m["content"]) for m in messages) // 4,
-            n_output_tokens=10 * len(labels),
+            n_output_tokens=8,
         )
 
 

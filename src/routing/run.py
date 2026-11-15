@@ -10,7 +10,7 @@ Per item the run produces, in this order (each kind is one stage, timed separate
                    n_batches independent batches of them (batch 0 is the main one)
     greedy         one generation at temperature 0 with the probability of every decision
     score          the majority vote of batch 0 is scored by teacher forcing (no generation)
-    verbal         a follow-up turn asks how likely the majority vote is to be correct
+    verbal         a follow-up turn asks how likely the majority vote is to be correct as a whole
     verbal_greedy  the same question about the greedy answer, where it differs from the vote
 
 Results go to outputs/runs/<run_name>/: the resolved config, run metadata and one JSON line per
@@ -145,7 +145,6 @@ def _record(config: dict, item_id: str, kind: str, seed: int, batch: int, temper
         "valid": result.labels is not None,
         "labels": result.labels,
         "p1": None if result.p1 is None else [round(p, 6) for p in result.p1],
-        "verbal": result.verbal,
         "verbal_overall": result.verbal_overall,
         "n_bounded": result.n_bounded,
         "ordered": result.ordered,

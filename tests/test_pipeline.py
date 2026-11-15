@@ -129,7 +129,7 @@ def test_run_and_analyse_with_the_fake_engine(tmp_path, monkeypatch):
     assert set(by_name) >= {
         "consistency: mean pairwise Jaccard",
         "log-probability: voted set, teacher-forced",
-        "verbalised: overall",
+        "verbalised confidence",
         "control: random",
     }
     assert summary["n_items_all_signals"] == 60
