@@ -2,8 +2,10 @@
 
     python -m routing.analyze outputs/runs/<run_name>
 
-Prints the tables and writes summary.json next to the log. All signals score the same
-prediction, the per-label majority vote over the sampled runs.
+Prints the tables and writes two files next to the log: summary.json with every number, and
+items.csv with one row per item (ids, correctness and signal values, no text) for the routing
+analysis and the notebooks. All signals score the same prediction, the per-label majority vote
+over the sampled runs of batch 0; the single-run policies are reported in a table of their own.
 """
 
 from __future__ import annotations
@@ -21,6 +23,20 @@ from .data import REPO_ROOT, gold_matrix, load_role
 from .labels import labels_for
 from .metrics import auroc, cluster_bootstrap_ci, error_pr_auc, task_quality
 
+BASELINE_DIR = REPO_ROOT / "outputs" / "baselines"
+
+PRIMARY = "consistency: mean pairwise Jaccard"
+# Signals that the model itself provides; the item-level comparison uses the items that have all of them.
+MODEL_SIGNALS = (
+    PRIMARY,
+    "consistency: modal-set frequency",
+    "consistency: Hamming agreement",
+    "log-probability: voted set, teacher-forced",
+    "log-probability: voted set, greedy pass",
+    "verbalised: overall",
+    "verbalised: product over labels",
+)
+
 
 def load_generations(run_dir: Path) -> pd.DataFrame:
     """All generations of a run, keeping the last record when a request was retried."""
@@ -35,34 +51,68 @@ def assemble(run_dir: Path) -> dict:
     with open(run_dir / "config.yaml", encoding="utf-8") as handle:
         config = yaml.safe_load(handle)
     source, n_samples = config["source"], int(config["n_samples"])
+    n_batches, base_seed = int(config.get("n_batches", 1)), int(config["base_seed"])
     labels = labels_for(source)
     generations = load_generations(run_dir)
 
     items = load_role(source, config["role"])
     items = items[items["item_id"].isin(set(generations["item_id"]))].reset_index(drop=True)
     gold = gold_matrix(items, source)
-
-    valid = generations[generations["valid"]]
-    sampled = {key: group.sort_values("seed") for key, group in valid[valid["kind"] == "sample"].groupby("item_id")}
-    greedy = valid[valid["kind"] == "greedy"].set_index("item_id")
-
+    row_of = {item_id: row for row, item_id in enumerate(items["item_id"])}
     n_items, n_labels = len(items), len(labels)
-    samples = np.zeros((n_items, n_samples, n_labels), dtype=np.int8)
-    complete = np.zeros(n_items, dtype=bool)
-    greedy_decisions = np.zeros((n_items, n_labels), dtype=np.int8)
-    p1 = np.full((n_items, n_labels), np.nan)
-    has_greedy = np.zeros(n_items, dtype=bool)
-    for row, item_id in enumerate(items["item_id"]):
-        group = sampled.get(item_id)
-        if group is not None and len(group) >= n_samples:
-            samples[row] = np.array(group["labels"].tolist()[:n_samples], dtype=np.int8)
-            complete[row] = True
-        if item_id in greedy.index:
-            record = greedy.loc[item_id]
-            greedy_decisions[row] = record["labels"]
-            has_greedy[row] = True
-            if record["p1"] is not None:
-                p1[row] = record["p1"]
+
+    samples = np.zeros((n_items, n_batches, n_samples, n_labels), dtype=np.int8)
+    filled = np.zeros((n_items, n_batches, n_samples), dtype=bool)
+    arrays = {
+        "greedy": np.zeros((n_items, n_labels), dtype=np.int8),
+        "has_greedy": np.zeros(n_items, dtype=bool),
+        "p1_greedy": np.full((n_items, n_labels), np.nan),
+    }
+    assessed: dict[str, dict[int, dict]] = {"score": {}, "verbal": {}, "verbal_greedy": {}}
+    for record in generations[generations["valid"]].to_dict("records"):
+        row = row_of.get(record["item_id"])
+        if row is None:
+            continue
+        kind = record["kind"]
+        if kind == "sample":
+            batch, r = divmod(int(record["seed"]) - base_seed, 100)
+            if 0 <= batch < n_batches and 0 <= r < n_samples:
+                samples[row, batch, r] = record["labels"]
+                filled[row, batch, r] = True
+        elif kind == "greedy":
+            arrays["greedy"][row] = record["labels"]
+            arrays["has_greedy"][row] = True
+            if record.get("p1") is not None:
+                arrays["p1_greedy"][row] = record["p1"]
+        elif kind in assessed:
+            assessed[kind][row] = record
+
+    complete = filled.all(axis=2)  # (items, batches)
+    vote = np.zeros((n_items, n_labels), dtype=np.int8)
+    for row in np.flatnonzero(complete[:, 0]):
+        vote[row] = signals.majority_vote(samples[row, 0])
+
+    # Confidence queries count only if they assessed the decisions that are scored here.
+    p1_forced = np.full((n_items, n_labels), np.nan)
+    verbal = np.full((n_items, n_labels), np.nan)
+    verbal_overall = np.full(n_items, np.nan)
+    verbal_greedy = np.full((n_items, n_labels), np.nan)
+    verbal_greedy_overall = np.full(n_items, np.nan)
+    for row in range(n_items):
+        target = vote[row].tolist()
+        record = assessed["score"].get(row)
+        if record and complete[row, 0] and record["labels"] == target and record.get("p1") is not None:
+            p1_forced[row] = record["p1"]
+        record = assessed["verbal"].get(row)
+        if record and complete[row, 0] and record["labels"] == target and record.get("verbal") is not None:
+            verbal[row], verbal_overall[row] = record["verbal"], record["verbal_overall"]
+        if arrays["has_greedy"][row]:
+            greedy = arrays["greedy"][row].tolist()
+            record = assessed["verbal_greedy"].get(row)
+            if record and record["labels"] == greedy and record.get("verbal") is not None:
+                verbal_greedy[row], verbal_greedy_overall[row] = record["verbal"], record["verbal_overall"]
+            elif complete[row, 0] and greedy == target:
+                verbal_greedy[row], verbal_greedy_overall[row] = verbal[row], verbal_overall[row]
 
     return {
         "config": config,
@@ -71,88 +121,263 @@ def assemble(run_dir: Path) -> dict:
         "gold": gold,
         "samples": samples,
         "complete": complete,
-        "greedy": greedy_decisions,
-        "has_greedy": has_greedy,
-        "p1": p1,
+        "vote": vote,
+        "p1_forced": p1_forced,
+        "verbal": verbal,
+        "verbal_overall": verbal_overall,
+        "verbal_greedy": verbal_greedy,
+        "verbal_greedy_overall": verbal_greedy_overall,
         "generations": generations,
+        **arrays,
     }
 
 
-def analyse(run_dir: Path, n_resamples: int = 1000) -> dict:
-    data = assemble(run_dir)
-    keep = data["complete"]
+def _subset(data: dict, mask: np.ndarray) -> dict:
+    """The same run restricted to the items selected by a boolean mask."""
+    n_items = len(data["items"])
+    out = dict(data)
+    out["items"] = data["items"][mask].reset_index(drop=True)
+    for key, value in data.items():
+        if isinstance(value, np.ndarray) and value.shape[:1] == (n_items,):
+            out[key] = value[mask]
+    return out
+
+
+def _mean_log(confidence: np.ndarray) -> np.ndarray:
+    """Mean over labels of the log of a per-decision confidence (length-normalised log-probability)."""
+    with np.errstate(invalid="ignore"):
+        return np.log(np.clip(confidence, 1e-9, 1.0)).mean(axis=1)
+
+
+def _baseline_probabilities(source: str, item_ids: pd.Series, labels) -> np.ndarray | None:
+    """P(label = 1) from the TF-IDF baseline for the given items, if it has been run."""
+    path = BASELINE_DIR / f"tfidf_{source}.csv"
+    if not path.exists():
+        return None
+    table = pd.read_csv(path).drop_duplicates("item_id").set_index("item_id")
+    if not set(item_ids) <= set(table.index):
+        return None
+    return table.loc[list(item_ids), [f"p_{label}" for label in labels]].to_numpy(dtype=float)
+
+
+def item_signals(data: dict) -> tuple[pd.DataFrame, dict[str, np.ndarray]]:
+    """One row per item with a complete main batch: correctness and every item-level signal.
+
+    Also returns the decision-level signals as (items, labels) arrays. Higher always means more
+    confident. A signal that could not be computed for an item is NaN there.
+    """
+    keep = data["complete"][:, 0]
     items = data["items"][keep].reset_index(drop=True)
-    gold, samples = data["gold"][keep], data["samples"][keep]
-    p1, greedy, has_greedy = data["p1"][keep], data["greedy"][keep], data["has_greedy"][keep]
-    groups = items["article_id"].to_numpy()
+    gold, vote, samples = data["gold"][keep], data["vote"][keep], data["samples"][keep, 0]
+    p1_forced, p1_greedy = data["p1_forced"][keep], data["p1_greedy"][keep]
+    verbal, verbal_overall = data["verbal"][keep], data["verbal_overall"][keep]
     n = len(items)
-    if n == 0:
-        raise ValueError("no item has a complete set of valid sampled runs")
 
-    vote = np.stack([signals.majority_vote(s) for s in samples])
-    correct_item = (vote == gold).all(axis=1)
-    correct_label = vote == gold
-    gold_empty = gold.sum(axis=1) == 0
-    have_p1 = ~np.isnan(p1).any(axis=1)
-
+    forced = signals.decision_confidence(p1_forced, vote)
+    from_greedy = signals.decision_confidence(p1_greedy, vote)
+    jaccard = np.array([signals.mean_pairwise_jaccard(s) for s in samples]) if n else np.zeros(0)
     rng = np.random.default_rng(0)
-    jaccard = np.array([signals.mean_pairwise_jaccard(s) for s in samples])
-    item_signals = {
-        "consistency: mean pairwise Jaccard": jaccard,
-        "consistency: modal-set frequency": np.array([signals.modal_set_frequency(s) for s in samples]),
-        "consistency: Hamming agreement": np.array([signals.hamming_agreement(s) for s in samples]),
-        "log-probability of voted set": np.array(
-            [signals.joint_log_probability(p, v) if ok else np.nan for p, v, ok in zip(p1, vote, have_p1)]
-        ),
-        "control: fewer predicted labels": -vote.sum(axis=1).astype(float),
-        "control: shorter text": -items["text"].str.split().str.len().to_numpy(dtype=float),
-        "control: random": rng.random(n),
-        "control: shuffled Jaccard": rng.permutation(jaccard),
-    }
 
-    strata = {"all": np.ones(n, dtype=bool), "gold empty": gold_empty, "gold non-empty": ~gold_empty}
-    item_table = []
-    for name, score in item_signals.items():
+    table = pd.DataFrame(
+        {
+            "item_id": items["item_id"],
+            "article_id": items["article_id"],
+            "correct": (vote == gold).all(axis=1),
+            "gold_empty": gold.sum(axis=1) == 0,
+            "n_gold": gold.sum(axis=1),
+            "n_predicted": vote.sum(axis=1),
+            "n_words": items["text"].str.split().str.len(),
+            PRIMARY: jaccard,
+            "consistency: modal-set frequency": [signals.modal_set_frequency(s) for s in samples],
+            "consistency: Hamming agreement": [signals.hamming_agreement(s) for s in samples],
+            "log-probability: voted set, teacher-forced": _mean_log(forced),
+            "log-probability: voted set, greedy pass": _mean_log(from_greedy),
+            "verbalised: overall": verbal_overall,
+            "verbalised: product over labels": _mean_log(verbal),
+        }
+    )
+    if "disinformative" in items:
+        table["disinformative"] = items["disinformative"].to_numpy()
+    decision = {
+        "consistency: vote share": np.stack([signals.label_agreement(s) for s in samples]) if n else np.zeros((0, 0)),
+        "log-probability: teacher-forced": forced,
+        "log-probability: greedy pass": from_greedy,
+        "verbalised": verbal,
+    }
+    baseline = _baseline_probabilities(data["config"]["source"], items["item_id"], data["labels"])
+    if baseline is not None:
+        classical = signals.decision_confidence(baseline, vote)
+        table["classical: TF-IDF logistic regression"] = _mean_log(classical)
+        decision["classical: TF-IDF logistic regression"] = classical
+    table["control: fewer predicted labels"] = -table["n_predicted"].astype(float)
+    table["control: shorter text"] = -table["n_words"].astype(float)
+    table["control: random"] = rng.random(n)
+    table["control: shuffled Jaccard"] = rng.permutation(jaccard)
+    return table, decision
+
+
+def _signal_columns(table: pd.DataFrame) -> list[str]:
+    return [c for c in table.columns if c.split(":")[0] in ("consistency", "log-probability", "verbalised", "classical", "control")]
+
+
+def analyse(run_dir: Path, n_resamples: int = 1000, min_support: int = 30) -> dict:
+    data = assemble(run_dir)
+    # MIPD: techniques were annotated on disinformative articles only. Credible articles have no
+    # technique by construction, so they are reported as a false-alarm check and left out of the
+    # rest (PLAN.md, decision 4).
+    credible_check = None
+    if "disinformative" in data["items"]:
+        credible = (data["items"]["disinformative"] == 0).to_numpy()
+        voted = credible & data["complete"][:, 0]
+        if voted.any():
+            predicted = data["vote"][voted].sum(axis=1)
+            credible_check = {
+                "credible_items": int(voted.sum()),
+                "share_with_a_predicted_technique": float((predicted > 0).mean()),
+                "mean_predicted_techniques": float(predicted.mean()),
+            }
+        data = _subset(data, ~credible)
+    table, decision = item_signals(data)
+    if table.empty:
+        raise ValueError("no item has a complete set of valid sampled runs")
+    keep = data["complete"][:, 0]
+    gold, vote, samples = data["gold"][keep], data["vote"][keep], data["samples"][keep]
+    greedy, has_greedy, p1_greedy = data["greedy"][keep], data["has_greedy"][keep], data["p1_greedy"][keep]
+    labels = data["labels"]
+    correct = table["correct"].to_numpy()
+    correct_label = vote == gold
+    groups = table["article_id"].to_numpy()
+    n = len(table)
+
+    # Item level. The comparison uses the items for which every signal of the model is available.
+    names = _signal_columns(table)
+    available = [name for name in MODEL_SIGNALS if table[name].notna().any()]
+    common = table[available].notna().all(axis=1).to_numpy()
+    strata = {
+        "all": common,
+        "gold empty": common & table["gold_empty"].to_numpy(),
+        "gold non-empty": common & ~table["gold_empty"].to_numpy(),
+    }
+    primary = table[PRIMARY].to_numpy()
+    item_level = []
+    for name in names:
+        score = table[name].to_numpy(dtype=float)
+        if np.isnan(score[common]).all():
+            continue
         row = {"signal": name}
         for stratum, mask in strata.items():
-            row[f"AUROC {stratum}"] = auroc(correct_item[mask], score[mask])
-        low, high = cluster_bootstrap_ci(lambda idx, s=score: auroc(correct_item[idx], s[idx]), groups, n_resamples)
-        row["CI low"], row["CI high"] = low, high
-        row["error PR-AUC"] = error_pr_auc(correct_item, score)
-        item_table.append(row)
-
-    agreement = np.stack([signals.label_agreement(s) for s in samples])
-    label_signals = {"consistency: vote share": agreement}
-    if have_p1.any():
-        label_signals["log-probability of voted decision"] = np.where(
-            have_p1[:, None], signals.decision_confidence(p1, vote), np.nan
+            row[f"AUROC {stratum}"] = auroc(correct[mask], score[mask])
+        row["CI low"], row["CI high"] = cluster_bootstrap_ci(
+            lambda idx, s=score: auroc(correct[idx][common[idx]], s[idx][common[idx]]), groups, n_resamples
         )
+        row["error PR-AUC"] = error_pr_auc(correct[common], score[common])
+        if name != PRIMARY:
+            # Paired difference to the primary consistency score, on the same resampled articles.
+            row["diff to Jaccard"] = row["AUROC all"] - auroc(correct[common], primary[common])
+            row["diff low"], row["diff high"] = cluster_bootstrap_ci(
+                lambda idx, s=score: auroc(correct[idx][common[idx]], s[idx][common[idx]])
+                - auroc(correct[idx][common[idx]], primary[idx][common[idx]]),
+                groups,
+                n_resamples,
+            )
+        row["distinct values"] = int(len(np.unique(score[common & ~np.isnan(score)])))
+        item_level.append(row)
+
+    # Decision level (item x label).
     label_strata = {
         "all decisions": np.ones_like(correct_label, dtype=bool),
         "predicted positive": vote == 1,
         "gold positive": gold == 1,
     }
-    label_table = []
-    for name, score in label_signals.items():
+    decision_level = []
+    for name, score in decision.items():
+        if np.isnan(score).all():
+            continue
         row = {"signal": name}
         for stratum, mask in label_strata.items():
             row[f"AUROC {stratum}"] = auroc(correct_label[mask], score[mask])
-        label_table.append(row)
+        decision_level.append(row)
 
-    quality = {"majority vote of sampled runs": task_quality(gold, vote)}
-    single = [task_quality(gold, samples[:, r, :]) for r in range(samples.shape[1])]
-    quality["single sampled run (mean over runs)"] = {
-        key: float(np.mean([q[key] for q in single])) for key in single[0]
-    }
+    # Per technique, for techniques with enough gold positives among the analysed items.
+    per_label = []
+    for j, label in enumerate(labels):
+        support = int(gold[:, j].sum())
+        if support < min_support:
+            continue
+        row = {"label": label, "gold positives": support, "accuracy": float(correct_label[:, j].mean())}
+        for name, score in decision.items():
+            if not np.isnan(score).all():
+                row[name] = auroc(correct_label[:, j], score[:, j])
+        per_label.append(row)
+
+    # Task quality of the voted prediction and of single runs.
+    quality = {"majority vote of 5 sampled runs": task_quality(gold, vote)}
+    single = [task_quality(gold, samples[:, 0, r, :]) for r in range(samples.shape[2])]
+    quality["single sampled run (mean over runs)"] = {key: float(np.mean([q[key] for q in single])) for key in single[0]}
     if has_greedy.any():
         quality["single greedy run"] = task_quality(gold[has_greedy], greedy[has_greedy])
+
+    # Complete policies: what is accepted is the prediction of that policy, scored by its own signal.
+    stage_seconds = _stage_seconds(run_dir, int(len(data["items"])))
+    policies = [
+        _policy("5 sampled runs + consistency", correct, primary, 5, ["sample"], stage_seconds),
+        _policy(
+            "5 sampled runs + teacher-forced log-probability",
+            correct,
+            table["log-probability: voted set, teacher-forced"].to_numpy(),
+            6,
+            ["sample", "score"],
+            stage_seconds,
+        ),
+        _policy(
+            "5 sampled runs + verbalised confidence",
+            correct,
+            table["verbalised: overall"].to_numpy(),
+            6,
+            ["sample", "verbal"],
+            stage_seconds,
+        ),
+    ]
+    if has_greedy.any():
+        greedy_correct = (greedy == gold).all(axis=1)
+        own = np.where(has_greedy, _mean_log(signals.decision_confidence(p1_greedy, greedy)), np.nan)
+        policies.append(_policy("1 greedy run + its own log-probability", greedy_correct, own, 1, ["greedy"], stage_seconds))
+        stated = np.where(has_greedy, data["verbal_greedy_overall"][keep], np.nan)
+        # Only when the run asked about every greedy answer; otherwise the values cover just the
+        # items whose greedy answer equals the vote, which is not a fair sample.
+        if data["config"].get("verbal_greedy") and not np.isnan(stated).all():
+            policies.append(
+                _policy("1 greedy run + verbalised confidence", greedy_correct, stated, 2, ["greedy", "verbal"], stage_seconds)
+            )
+
+    # Independent batches of sampled runs: how much the main numbers move between them.
+    batches = []
+    for b in range(samples.shape[1]):
+        done = data["complete"][:, b]
+        if not done.any():
+            continue
+        batch_gold, batch_samples = data["gold"][done], data["samples"][done, b]
+        batch_vote = np.stack([signals.majority_vote(s) for s in batch_samples])
+        batch_jaccard = np.array([signals.mean_pairwise_jaccard(s) for s in batch_samples])
+        batch_correct = (batch_vote == batch_gold).all(axis=1)
+        batches.append(
+            {
+                "batch": b,
+                "items": int(done.sum()),
+                "micro_f1": task_quality(batch_gold, batch_vote)["micro_f1"],
+                "exact_set_accuracy": float(batch_correct.mean()),
+                "AUROC Jaccard": auroc(batch_correct, batch_jaccard),
+                "fully consistent": float((batch_jaccard == 1.0).mean()),
+            }
+        )
 
     # Server sanity checks. A greedy decision must be the more probable of the two decision tokens;
     # if it is not, the server changes the distribution after the model (for example with a
     # repetition penalty) and its sampler settings have to be pinned before any real run.
+    have_p1 = ~np.isnan(p1_greedy).any(axis=1)
     checked = has_greedy & have_p1
     greedy_matches_probability = (
-        float((greedy[checked] == (p1[checked] >= 0.5)).mean()) if checked.any() else float("nan")
+        float((greedy[checked] == (p1_greedy[checked] >= 0.5)).mean()) if checked.any() else float("nan")
     )
     # Sampled decisions should follow the same probabilities, sharpened by the temperature. The
     # two rates below agree only roughly (each sampled run conditions on its own earlier
@@ -160,17 +385,17 @@ def analyse(run_dir: Path, n_resamples: int = 1000) -> dict:
     temperature = float(data["config"].get("temperature", 1.0))
     expected_positive_rate = sampled_positive_rate = float("nan")
     if checked.any() and temperature > 0:
-        p = np.clip(p1[checked], 1e-9, 1 - 1e-9)
+        p = np.clip(p1_greedy[checked], 1e-9, 1 - 1e-9)
         sharpened = p ** (1 / temperature) / (p ** (1 / temperature) + (1 - p) ** (1 / temperature))
         expected_positive_rate = float(sharpened.mean())
-        sampled_positive_rate = float(samples[checked].mean())
+        sampled_positive_rate = float(samples[checked, 0].mean())
 
     generations = data["generations"]
     ordered = generations["ordered"].dropna() if "ordered" in generations else pd.Series(dtype=bool)
-    keys_in_label_order = float(ordered.astype(bool).mean()) if len(ordered) else float("nan")
-
+    by_kind = generations.groupby("kind")["valid"].agg(["size", "sum"])
     meta_path = run_dir / "meta.json"
     meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else []
+
     summary = {
         "run": data["config"]["run_name"],
         "source": data["config"]["source"],
@@ -179,36 +404,81 @@ def analyse(run_dir: Path, n_resamples: int = 1000) -> dict:
         "model": data["config"]["engine"].get("model"),
         "n_items_in_run": int(len(data["items"])),
         "n_items_complete": int(n),
+        "n_items_all_signals": int(common.sum()),
         "n_articles": int(len(np.unique(groups))),
+        "requests": {kind: {"total": int(r["size"]), "invalid": int(r["size"] - r["sum"])} for kind, r in by_kind.iterrows()},
         "invalid_generations": int((~generations["valid"]).sum()),
         "generations": int(len(generations)),
-        "share_gold_empty": float(gold_empty.mean()),
-        "share_vote_correct": float(correct_item.mean()),
-        "share_fully_consistent": float((jaccard == 1.0).mean()),
+        "share_gold_empty": float(table["gold_empty"].mean()),
+        "share_vote_correct": float(correct.mean()),
+        "share_fully_consistent": float((primary == 1.0).mean()),
+        "accuracy_when_fully_consistent": float(correct[primary == 1.0].mean()) if (primary == 1.0).any() else float("nan"),
+        "accuracy_when_not_fully_consistent": float(correct[primary < 1.0].mean()) if (primary < 1.0).any() else float("nan"),
         "labels_with_bounded_probability": int(generations["n_bounded"].fillna(0).sum()),
         "greedy_matches_probability": greedy_matches_probability,
-        "keys_in_label_order": keys_in_label_order,
+        "keys_in_label_order": float(ordered.astype(bool).mean()) if len(ordered) else float("nan"),
         "sampled_positive_rate": sampled_positive_rate,
         "expected_positive_rate": expected_positive_rate,
+        "stage_seconds_per_item": stage_seconds,
         "output_tokens_per_second": [m.get("output_tokens_per_second") for m in meta],
         "wall_seconds": [m.get("wall_seconds") for m in meta],
+        "gpu_memory_used_mib": [m.get("gpu_memory_used_mib") for m in meta],
+        "credible_articles": credible_check,
         "task_quality": quality,
-        "item_level": item_table,
-        "label_level": label_table,
+        "item_level": item_level,
+        "decision_level": decision_level,
+        "per_label": per_label,
+        "policies": policies,
+        "batches": batches,
     }
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    table.to_csv(run_dir / "items.csv", index=False)
     return summary
 
 
+def _stage_seconds(run_dir: Path, n_items: int) -> dict[str, float]:
+    """Wall-clock seconds per item for each kind of request, summed over resumed invocations."""
+    meta_path = run_dir / "meta.json"
+    if not meta_path.exists() or n_items == 0:
+        return {}
+    seconds: dict[str, float] = {}
+    for entry in json.loads(meta_path.read_text(encoding="utf-8")):
+        for stage, numbers in entry.get("stages", {}).items():
+            seconds[stage] = seconds.get(stage, 0.0) + float(numbers["wall_seconds"])
+    return {stage: round(value / n_items, 4) for stage, value in seconds.items()}
+
+
+def _policy(name: str, correct: np.ndarray, score: np.ndarray, requests: int, stages: list[str], seconds: dict) -> dict:
+    have = ~np.isnan(score)
+    known = all(stage in seconds for stage in stages)
+    return {
+        "policy": name,
+        "requests per item": requests,
+        "seconds per item": round(sum(seconds[stage] for stage in stages), 3) if known else float("nan"),
+        "exact-set accuracy": float(correct[have].mean()) if have.any() else float("nan"),
+        "AUROC": auroc(correct[have], score[have]),
+        "items": int(have.sum()),
+    }
+
+
+def _frame(rows: list[dict], index: str) -> str:
+    if not rows:
+        return "(not available)"
+    return pd.DataFrame(rows).set_index(index).round(3).to_string()
+
+
 def report(summary: dict) -> str:
-    pd.set_option("display.width", 200)
+    pd.set_option("display.width", 250)
+    requests = ", ".join(f"{kind} {r['total']} ({r['invalid']} invalid)" for kind, r in summary["requests"].items())
     lines = [
         f"run {summary['run']}: {summary['model']} on {summary['source']} ({summary['role']}), prompt {summary['prompt']}",
         f"items with complete runs: {summary['n_items_complete']} of {summary['n_items_in_run']} "
-        f"from {summary['n_articles']} articles; invalid generations: {summary['invalid_generations']} "
-        f"of {summary['generations']}",
-        f"gold empty: {summary['share_gold_empty']:.1%}; voted set exactly right: "
-        f"{summary['share_vote_correct']:.1%}; all runs identical: {summary['share_fully_consistent']:.1%}",
+        f"from {summary['n_articles']} articles; with every signal: {summary['n_items_all_signals']}",
+        f"requests: {requests}",
+        f"gold empty: {summary['share_gold_empty']:.1%}; voted set exactly right: {summary['share_vote_correct']:.1%}; "
+        f"all runs identical: {summary['share_fully_consistent']:.1%} "
+        f"(exactly right when identical: {summary['accuracy_when_fully_consistent']:.1%}, "
+        f"otherwise: {summary['accuracy_when_not_fully_consistent']:.1%})",
         f"server checks: greedy decisions agreeing with their token probability "
         f"{summary['greedy_matches_probability']:.1%} (must be 100%); answers with keys in label order "
         f"{summary['keys_in_label_order']:.1%}",
@@ -219,11 +489,26 @@ def report(summary: dict) -> str:
         pd.DataFrame(summary["task_quality"]).T.round(3).to_string(),
         "",
         "Item level: does the score predict that the voted label set is exactly right?",
-        pd.DataFrame(summary["item_level"]).set_index("signal").round(3).to_string(),
+        _frame(summary["item_level"], "signal"),
         "",
         "Decision level (item x label): does the score predict that the voted decision is right?",
-        pd.DataFrame(summary["label_level"]).set_index("signal").round(3).to_string(),
+        _frame(summary["decision_level"], "signal"),
+        "",
+        "Per technique (decision-level AUROC, techniques with enough gold positives)",
+        _frame(summary["per_label"], "label"),
+        "",
+        "Complete policies (each scored on its own prediction)",
+        _frame(summary["policies"], "policy"),
     ]
+    if summary.get("credible_articles"):
+        check = summary["credible_articles"]
+        lines.insert(
+            4,
+            f"credible articles (left out below): {check['credible_items']}, of which "
+            f"{check['share_with_a_predicted_technique']:.1%} got at least one technique from the vote",
+        )
+    if len(summary["batches"]) > 1:
+        lines += ["", "Independent batches of sampled runs", _frame(summary["batches"], "batch")]
     return "\n".join(lines)
 
 
@@ -231,9 +516,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("run_dir", type=Path)
     parser.add_argument("--resamples", type=int, default=1000, help="bootstrap resamples for the intervals")
+    parser.add_argument("--min-support", type=int, default=30, help="gold positives a technique needs for its own row")
     args = parser.parse_args()
     run_dir = args.run_dir if args.run_dir.is_absolute() else REPO_ROOT / args.run_dir
-    print(report(analyse(run_dir, args.resamples)))
+    print(report(analyse(run_dir, args.resamples, args.min_support)))
 
 
 if __name__ == "__main__":
