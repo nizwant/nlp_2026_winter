@@ -1,0 +1,20 @@
+# Analysis and client environment. The model server (vLLM or llama.cpp) runs separately.
+#   mamba env create -f environment.yml
+#   conda activate nlp-routing
+#   pip install -e .
+name: nlp-routing
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+  - matplotlib
+  - pyyaml
+  - openai
+  - tqdm
+  - pytest
+  - ipykernel
+  - pip
