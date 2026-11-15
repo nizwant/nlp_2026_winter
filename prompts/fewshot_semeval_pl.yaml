@@ -1,0 +1,31 @@
+source: semeval_pl
+seed: 0
+n_examples: 6
+n_empty: 2
+min_words: 8
+max_words: 80
+item_ids:
+- semeval_pl:2597:21
+- semeval_pl:25153:5
+- semeval_pl:2521:22
+- semeval_pl:2538:13
+- semeval_pl:2541:19
+- semeval_pl:2516:12
+gold:
+  semeval_pl:2597:21:
+  - Loaded_Language
+  - Name_Calling-Labeling
+  - Doubt
+  - Exaggeration-Minimisation
+  - Appeal_to_Hypocrisy
+  semeval_pl:25153:5: []
+  semeval_pl:2521:22:
+  - Name_Calling-Labeling
+  semeval_pl:2538:13:
+  - Appeal_to_Fear-Prejudice
+  - Appeal_to_Authority
+  semeval_pl:2541:19: []
+  semeval_pl:2516:12:
+  - Doubt
+  - Flag_Waving
+  - Guilt_by_Association

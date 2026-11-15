@@ -1,0 +1,28 @@
+source: semeval_en
+seed: 0
+n_examples: 6
+n_empty: 2
+min_words: 8
+max_words: 80
+item_ids:
+- semeval_en:793921939:22
+- semeval_en:730559808:9
+- semeval_en:706777811:1
+- semeval_en:778094905:16
+- semeval_en:999000858:7
+- semeval_en:770938827:3
+gold:
+  semeval_en:793921939:22:
+  - Repetition
+  - Doubt
+  semeval_en:730559808:9: []
+  semeval_en:706777811:1:
+  - Name_Calling-Labeling
+  semeval_en:778094905:16:
+  - Loaded_Language
+  - Flag_Waving
+  semeval_en:999000858:7: []
+  semeval_en:770938827:3:
+  - Loaded_Language
+  - Exaggeration-Minimisation
+  - Causal_Oversimplification

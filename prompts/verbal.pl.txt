@@ -1,0 +1,5 @@
+Powyżej znajduje się ocena technik dla tego tekstu. Oceń teraz, na ile jest ona poprawna.
+
+- Dla każdej techniki podaj prawdopodobieństwo w procentach (liczba całkowita od 0 do 100), że podana wyżej decyzja dla tej techniki jest poprawna.
+- Na końcu, pod kluczem "overall", podaj prawdopodobieństwo w procentach (od 0 do 100), że poprawna jest cała ocena, czyli wszystkie decyzje jednocześnie.
+- Odpowiedz wyłącznie obiektem JSON, w którym kluczami są klucze technik w tej samej kolejności co wyżej, a ostatnim kluczem jest "overall". Bez komentarza.

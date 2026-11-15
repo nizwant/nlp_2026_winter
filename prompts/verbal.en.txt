@@ -1,0 +1,5 @@
+Above is an assessment of the techniques for this text. Now judge how likely it is to be correct.
+
+- For each technique give the probability in percent (an integer from 0 to 100) that the decision given above for this technique is correct.
+- At the end, under the key "overall", give the probability in percent (from 0 to 100) that the whole assessment is correct, that is, that all decisions are correct at once.
+- Answer only with a JSON object whose keys are the technique keys in the same order as above, with "overall" as the last key. No commentary.

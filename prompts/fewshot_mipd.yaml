@@ -1,0 +1,21 @@
+source: mipd
+seed: 0
+n_examples: 4
+n_empty: 2
+min_words: 40
+max_words: 300
+item_ids:
+- mipd:11547
+- mipd:7366
+- mipd:9788
+- mipd:9669
+gold:
+  mipd:11547: []
+  mipd:7366:
+  - REFERENCE_ERROR
+  mipd:9788:
+  - STRAWMAN
+  - CHERRY_PICKING
+  - FALSE_CAUSE
+  - EXAGGERATION
+  mipd:9669: []
