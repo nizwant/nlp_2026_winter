@@ -1,0 +1,323 @@
+{
+  "run": "bielik_semeval_pl_pilot_p1",
+  "source": "semeval_pl",
+  "role": "pilot",
+  "prompt": "p1",
+  "model": "Bielik-11B-v3.0-Instruct",
+  "n_items_in_run": 219,
+  "n_items_complete": 219,
+  "n_items_all_signals": 219,
+  "n_articles": 11,
+  "requests": {
+    "greedy": {
+      "total": 219,
+      "invalid": 0
+    },
+    "sample": {
+      "total": 1095,
+      "invalid": 0
+    },
+    "score": {
+      "total": 219,
+      "invalid": 0
+    },
+    "verbal": {
+      "total": 219,
+      "invalid": 0
+    },
+    "verbal_greedy": {
+      "total": 50,
+      "invalid": 0
+    }
+  },
+  "invalid_generations": 0,
+  "generations": 1802,
+  "share_gold_empty": 0.45662100456621,
+  "share_vote_correct": 0.3105022831050228,
+  "share_fully_consistent": 0.3013698630136986,
+  "accuracy_when_fully_consistent": 0.5151515151515151,
+  "accuracy_when_not_fully_consistent": 0.2222222222222222,
+  "labels_with_bounded_probability": 0,
+  "greedy_matches_probability": 1.0,
+  "greedy_exact_ties": 9,
+  "keys_in_label_order": 1.0,
+  "sampled_positive_rate": 0.06750049632717887,
+  "expected_positive_rate": 0.06816879803980068,
+  "stage_seconds_per_item": {
+    "sample": 2.122,
+    "greedy": 0.4805,
+    "score": 0.8735,
+    "verbal": 0.2247,
+    "verbal_greedy": 0.0536
+  },
+  "output_tokens_per_second": [
+    421.9
+  ],
+  "wall_seconds": [
+    822.16
+  ],
+  "gpu_memory_used_mib": [
+    11647
+  ],
+  "credible_articles": null,
+  "task_quality": {
+    "majority vote of 5 sampled runs": {
+      "micro_f1": 0.28515625,
+      "macro_f1": 0.20014160147287083,
+      "micro_precision": 0.228125,
+      "micro_recall": 0.3802083333333333,
+      "exact_set_accuracy": 0.3105022831050228,
+      "n_items": 219,
+      "n_supported_labels": 19
+    },
+    "single sampled run (mean over runs)": {
+      "micro_f1": 0.2737273202867685,
+      "macro_f1": 0.19496174477981387,
+      "micro_precision": 0.21419289918554543,
+      "micro_recall": 0.37916666666666665,
+      "exact_set_accuracy": 0.2748858447488584,
+      "n_items": 219.0,
+      "n_supported_labels": 19.0
+    },
+    "single greedy run": {
+      "micro_f1": 0.2776659959758551,
+      "macro_f1": 0.19904105708394026,
+      "micro_precision": 0.2262295081967213,
+      "micro_recall": 0.359375,
+      "exact_set_accuracy": 0.3059360730593607,
+      "n_items": 219,
+      "n_supported_labels": 19
+    }
+  },
+  "item_level": [
+    {
+      "signal": "consistency: mean pairwise Jaccard",
+      "AUROC all": 0.569098169068952,
+      "AUROC gold empty": 0.5222916666666667,
+      "AUROC gold non-empty": 0.46227477477477474,
+      "CI low": 0.43923940085232355,
+      "CI high": 0.6850928745927701,
+      "error PR-AUC": 0.6876020358400482,
+      "distinct values": 63
+    },
+    {
+      "signal": "consistency: modal-set frequency",
+      "AUROC all": 0.6770062329567589,
+      "AUROC gold empty": 0.5920833333333334,
+      "AUROC gold non-empty": 0.5202702702702702,
+      "CI low": 0.5976577402787968,
+      "CI high": 0.7638419889165071,
+      "error PR-AUC": 0.7838102430638891,
+      "diff to Jaccard": 0.10790806388780683,
+      "diff low": 0.04405595912575992,
+      "diff high": 0.17539664014007023,
+      "distinct values": 5
+    },
+    {
+      "signal": "consistency: Hamming agreement",
+      "AUROC all": 0.6967276977015971,
+      "AUROC gold empty": 0.6187499999999999,
+      "AUROC gold non-empty": 0.48704954954954954,
+      "CI low": 0.6194169242746725,
+      "CI high": 0.7836885989350534,
+      "error PR-AUC": 0.8038266535430932,
+      "diff to Jaccard": 0.1276295286326451,
+      "diff low": 0.05222139984975514,
+      "diff high": 0.2142566452818751,
+      "distinct values": 16
+    },
+    {
+      "signal": "log-probability: voted set, teacher-forced",
+      "AUROC all": 0.7221464744838333,
+      "AUROC gold empty": 0.6225,
+      "AUROC gold non-empty": 0.4876126126126126,
+      "CI low": 0.6064983052938274,
+      "CI high": 0.8262892222968637,
+      "error PR-AUC": 0.8197666853082158,
+      "diff to Jaccard": 0.15304830541488124,
+      "diff low": 0.04769375832249451,
+      "diff high": 0.24149366898629557,
+      "distinct values": 219
+    },
+    {
+      "signal": "log-probability: voted set, greedy pass",
+      "AUROC all": 0.7278924814959097,
+      "AUROC gold empty": 0.6229166666666667,
+      "AUROC gold non-empty": 0.5135135135135136,
+      "CI low": 0.616263685793998,
+      "CI high": 0.8254670486053388,
+      "error PR-AUC": 0.8403342616920395,
+      "diff to Jaccard": 0.15879431242695763,
+      "diff low": 0.058462906062804104,
+      "diff high": 0.24520582340283756,
+      "distinct values": 219
+    },
+    {
+      "signal": "verbalised confidence",
+      "AUROC all": 0.685430463576159,
+      "AUROC gold empty": 0.5750000000000001,
+      "AUROC gold non-empty": 0.7252252252252253,
+      "CI low": 0.6333333333333334,
+      "CI high": 0.7302188586209684,
+      "error PR-AUC": 0.8046508814902174,
+      "diff to Jaccard": 0.11633229450720695,
+      "diff low": -0.008935138935138824,
+      "diff high": 0.2728008473319441,
+      "distinct values": 5
+    },
+    {
+      "signal": "classical: TF-IDF logistic regression",
+      "AUROC all": 0.8843007401636152,
+      "AUROC gold empty": 0.86125,
+      "AUROC gold non-empty": 0.7736486486486487,
+      "CI low": 0.782599537037037,
+      "CI high": 0.9526393109276389,
+      "error PR-AUC": 0.9471881288505637,
+      "diff to Jaccard": 0.3152025710946631,
+      "diff low": 0.16912127355547119,
+      "diff high": 0.4429828428015857,
+      "distinct values": 219
+    },
+    {
+      "signal": "control: fewer predicted labels",
+      "AUROC all": 0.8854694195559019,
+      "AUROC gold empty": 1.0,
+      "AUROC gold non-empty": 0.6509009009009009,
+      "CI low": 0.8230857066321532,
+      "CI high": 0.9359095296595297,
+      "error PR-AUC": 0.9275194897160498,
+      "diff to Jaccard": 0.3163712504869498,
+      "diff low": 0.16531506078459865,
+      "diff high": 0.462547206978903,
+      "distinct values": 9
+    },
+    {
+      "signal": "control: shorter text",
+      "AUROC all": 0.7791682898324892,
+      "AUROC gold empty": 0.6964583333333332,
+      "AUROC gold non-empty": 0.7759009009009009,
+      "CI low": 0.714599554018447,
+      "CI high": 0.8342011086330444,
+      "error PR-AUC": 0.8844327099011158,
+      "diff to Jaccard": 0.21007012076353715,
+      "diff low": 0.09109408439329715,
+      "diff high": 0.3446429060070364,
+      "distinct values": 88
+    },
+    {
+      "signal": "control: random",
+      "AUROC all": 0.5334047526295287,
+      "AUROC gold empty": 0.47958333333333336,
+      "AUROC gold non-empty": 0.5495495495495495,
+      "CI low": 0.45711355631219436,
+      "CI high": 0.64313763564096,
+      "error PR-AUC": 0.7207942877787353,
+      "diff to Jaccard": -0.035693416439423364,
+      "diff low": -0.13209474291431822,
+      "diff high": 0.13030692062473587,
+      "distinct values": 219
+    },
+    {
+      "signal": "control: shuffled Jaccard",
+      "AUROC all": 0.5397350993377484,
+      "AUROC gold empty": 0.5166666666666666,
+      "AUROC gold non-empty": 0.6272522522522522,
+      "CI low": 0.43785975283048717,
+      "CI high": 0.6341117291275795,
+      "error PR-AUC": 0.7055025603577576,
+      "diff to Jaccard": -0.029363069731203617,
+      "diff low": -0.17912863649736044,
+      "diff high": 0.15526808201485306,
+      "distinct values": 63
+    }
+  ],
+  "decision_level": [
+    {
+      "signal": "consistency: vote share",
+      "AUROC all decisions": 0.6429609273824188,
+      "AUROC predicted positive": 0.5700183018135433,
+      "AUROC gold positive": 0.44860135835155973
+    },
+    {
+      "signal": "log-probability: teacher-forced",
+      "AUROC all decisions": 0.827817085540008,
+      "AUROC predicted positive": 0.6120292829016694,
+      "AUROC gold positive": 0.4475653275008633
+    },
+    {
+      "signal": "log-probability: greedy pass",
+      "AUROC all decisions": 0.8290703129295631,
+      "AUROC predicted positive": 0.6226498807609117,
+      "AUROC gold positive": 0.45608380338436744
+    },
+    {
+      "signal": "classical: TF-IDF logistic regression",
+      "AUROC all decisions": 0.9237678010933641,
+      "AUROC predicted positive": 0.6931950529643391,
+      "AUROC gold positive": 0.09036491308852307
+    }
+  ],
+  "per_label": [
+    {
+      "label": "Name_Calling-Labeling",
+      "gold positives": 42,
+      "accuracy": 0.8538812785388128,
+      "consistency: vote share": 0.5846423796791443,
+      "log-probability: teacher-forced": 0.7452372994652405,
+      "log-probability: greedy pass": 0.7452372994652406,
+      "classical: TF-IDF logistic regression": 0.7720588235294119
+    }
+  ],
+  "policies": [
+    {
+      "policy": "5 sampled runs + consistency",
+      "requests per item": 5,
+      "seconds per item": 2.122,
+      "exact-set accuracy": 0.3105022831050228,
+      "AUROC": 0.569098169068952,
+      "items": 219
+    },
+    {
+      "policy": "5 sampled runs + teacher-forced log-probability",
+      "requests per item": 6,
+      "seconds per item": 2.995,
+      "exact-set accuracy": 0.3105022831050228,
+      "AUROC": 0.7221464744838333,
+      "items": 219
+    },
+    {
+      "policy": "5 sampled runs + verbalised confidence",
+      "requests per item": 6,
+      "seconds per item": 2.347,
+      "exact-set accuracy": 0.3105022831050228,
+      "AUROC": 0.685430463576159,
+      "items": 219
+    },
+    {
+      "policy": "1 greedy run + its own log-probability",
+      "requests per item": 1,
+      "seconds per item": 0.48,
+      "exact-set accuracy": 0.3059360730593607,
+      "AUROC": 0.7539277297721917,
+      "items": 219
+    },
+    {
+      "policy": "1 greedy run + verbalised confidence",
+      "requests per item": 2,
+      "seconds per item": 0.705,
+      "exact-set accuracy": 0.3059360730593607,
+      "AUROC": 0.6842105263157895,
+      "items": 219
+    }
+  ],
+  "batches": [
+    {
+      "batch": 0,
+      "items": 219,
+      "micro_f1": 0.28515625,
+      "exact_set_accuracy": 0.3105022831050228,
+      "AUROC Jaccard": 0.569098169068952,
+      "fully consistent": 0.3013698630136986
+    }
+  ]
+}

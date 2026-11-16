@@ -1,0 +1,50 @@
+# Mistral-Nemo-Instruct-2407 served by vLLM. Same settings as configs/bielik.yaml; only the model differs.
+# Without further arguments: the SemEval PL pilot subset (219 train paragraphs) with prompt P1.
+#
+#   scripts/serve_vllm.sh mistral_nemo                                   # in the `vllm` environment
+#   python -m routing.run configs/mistral_nemo.yaml                      # in the `nlp-routing` environment
+#   python -m routing.analyze outputs/runs/mistral_nemo_semeval_pl_pilot_p1
+#
+# Other data, roles and prompts use the same file:
+#   python -m routing.run configs/mistral_nemo.yaml --source mipd --role calibration --prompt p3
+# The run is named <model_key>_<source>_<role>_<prompt>.
+#
+# Do not point this at Ollama's /v1 endpoint. Checked on 15 Nov 2026: it applies a repetition
+# penalty of 1.1 that cannot be changed per request and that flips decisions away from the
+# repeated "0", and it returns the keys in alphabetical order instead of the order of the schema.
+
+model_key: mistral_nemo
+source: semeval_pl
+role: pilot
+prompt: p1
+
+engine:
+  kind: openai                      # any OpenAI-compatible server
+  server: vLLM 0.33.0               # recorded in the log
+  base_url: http://127.0.0.1:8000/v1
+  model: Mistral-Nemo-Instruct-2407
+  quantization: AWQ 4-bit (community build), pbhappliedsystems/Mistral_Nemo_Instruct_2407_4bit_AWQ_Async @ 98d07b0
+  top_logprobs: 10                  # alternatives per generated token (greedy pass)
+  prompt_logprobs: 20               # alternatives per prompt token (teacher-forced scoring)
+  # Sampler settings are pinned so that nothing but temperature and top-p shapes the samples.
+  extra_body:
+    repetition_penalty: 1.0
+    top_k: 0
+    min_p: 0.0
+
+n_samples: 5
+n_batches: 3          # three independent batches of five runs; batch 0 is the main one
+temperature: 0.7
+top_p: 0.95
+base_seed: 1000
+greedy: true          # one run at temperature 0 with the probability of every decision
+score_voted: true     # teacher-forced log-probability of the majority vote
+score_when_greedy_agrees: false   # where vote == greedy answer the greedy pass gives the same probabilities
+verbal: true          # stated confidence in the majority vote
+verbal_greedy: true   # stated confidence in the greedy answer where it differs from the vote
+# Parallel requests. Measured on 16 Nov 2026 (RTX 4070 SUPER 12 GB, GPU_UTIL=0.90, 19,200 KV-cache
+# tokens), sampled runs with prompt P1, output tokens/s: 16 -> 520, 32 -> 710-750, 40 -> 880,
+# 48 -> 920 at 92% KV cache. Prompt P3 (4,600-token shared prefix): 24 -> 520, 32 -> 580 at 78%.
+# Above what the cache holds, vLLM preempts requests and throughput stops rising. Use
+# --concurrency 32 for P3; with the default GPU_UTIL=0.82 (14,336 tokens) use 32 for P1 and P2.
+max_concurrency: 40

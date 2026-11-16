@@ -1,0 +1,42 @@
+# Model server and client in containers. The server needs the NVIDIA Container Toolkit on the host.
+#
+#   docker compose up -d vllm                                     # serve Bielik (4-bit AWQ) on :8000
+#   docker compose run --rm client python -m routing.run configs/poc_semeval_pl.yaml
+#   docker compose run --rm client python -m routing.analyze outputs/runs/poc_semeval_pl_bielik
+#
+# Not tested on the development machine, where the toolkit is not installed and the server runs
+# from a conda environment (scripts/serve_vllm.sh) with the same vLLM version and arguments.
+services:
+  vllm:
+    image: vllm/vllm-openai:v0.33.0
+    command:
+      - --model=speakleash/Bielik-11B-v3.0-Instruct-awq
+      - --revision=0de6dd10ddcbd570b3844f1ae0e98f8e4800b548
+      - --served-model-name=Bielik-11B-v3.0-Instruct
+      - --max-model-len=8192
+      - --gpu-memory-utilization=0.82
+      - --seed=0
+    environment:
+      VLLM_USE_FLASHINFER_SAMPLER: "0"
+      VLLM_NO_USAGE_STATS: "1"
+      DO_NOT_TRACK: "1"
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ${HF_HOME:-~/.cache/huggingface}:/root/.cache/huggingface
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  client:
+    build: .
+    network_mode: host
+    volumes:
+      - ./outputs:/app/outputs
+    depends_on:
+      - vllm

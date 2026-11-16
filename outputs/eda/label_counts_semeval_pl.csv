@@ -1,0 +1,24 @@
+,train,dev,all,test role,own row in results
+Name_Calling-Labeling,475,111,586,111,yes
+Loaded_Language,310,93,403,93,yes
+Doubt,295,96,391,96,yes
+Appeal_to_Hypocrisy,162,76,238,76,yes
+Questioning_the_Reputation,164,57,221,57,yes
+Exaggeration-Minimisation,111,40,151,40,yes
+Appeal_to_Values,101,50,151,50,yes
+Appeal_to_Fear-Prejudice,108,36,144,36,yes
+Guilt_by_Association,94,30,124,30,yes
+Flag_Waving,68,28,96,28,no
+Conversation_Killer,50,40,90,40,yes
+Appeal_to_Authority,41,40,81,40,yes
+Appeal_to_Popularity,30,22,52,22,no
+Obfuscation-Vagueness-Confusion,36,11,47,11,no
+Slogans,36,7,43,7,no
+Consequential_Oversimplification,24,8,32,8,no
+Repetition,13,10,23,10,no
+False_Dilemma-No_Choice,12,8,20,8,no
+Red_Herring,12,7,19,7,no
+Appeal_to_Time,14,5,19,5,no
+Straw_Man,15,3,18,3,no
+Causal_Oversimplification,12,5,17,5,no
+Whataboutism,8,3,11,3,no
