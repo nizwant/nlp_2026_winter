@@ -7,6 +7,7 @@
   "n_items_in_run": 219,
   "n_items_complete": 219,
   "n_items_all_signals": 219,
+  "n_forced_from_greedy": 0,
   "n_articles": 11,
   "requests": {
     "greedy": {
@@ -44,11 +45,11 @@
   "sampled_positive_rate": 0.06750049632717887,
   "expected_positive_rate": 0.06816879803980068,
   "stage_seconds_per_item": {
-    "sample": 2.122,
+    "sample": 0.4244,
     "greedy": 0.4805,
     "score": 0.8735,
     "verbal": 0.2247,
-    "verbal_greedy": 0.0536
+    "verbal_greedy": 0.2346
   },
   "output_tokens_per_second": [
     421.9
