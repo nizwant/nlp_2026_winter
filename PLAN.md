@@ -45,10 +45,10 @@ Phase 1 scored 6.5/10. Phase 2 (20 pts, due 2 Dec) and Phase 3 (30 pts, due 13 J
 | 3 | The three sources are never pooled. Every table reports SemEval PL, SemEval EN and MIPD separately. | Review point; different label sets and units. |
 | 4 | MIPD: add the credible/disinformative label from the dataset's `data/disinformation/` folder. Primary results on disinformative articles, where techniques were annotated; credible articles reported separately as a false-alarm check. Articles are cut at 2,000 words (about 5% affected), flagged, with a with/without comparison. | Answers the empty-label point and the supervisor's length remark with a precise, model-independent rule. |
 | 5 | Output is a JSON object with one 0/1 value per technique in fixed order, enforced by structured output. No free text, no reasoning. | No parsing ambiguity; the probability of each decision token is directly readable; outputs contain no generated prose, so label outputs can be released. A list-of-labels format is run on the pilot as an ablation. |
-| 6 | Per item, prompt and model: 5 samples at temperature 0.7, top-p 0.95, logged seeds; 1 greedy pass with token log-probabilities; 1 verbalised-confidence pass (0-100 per technique plus one overall value). | "Fixed decoding" means fixed settings; greedy reruns would be identical. Temperatures 0.3 and 1.0 on the pilot as an ablation. |
+| 6 | Per item, prompt and model: 5 samples at temperature 0.7, top-p 0.95, logged seeds; 1 greedy pass with token log-probabilities; teacher-forced scoring of the majority vote where it differs from the greedy answer (where they are equal, the greedy pass already holds the same probabilities); 1 stated-confidence query for the whole answer (0-100). | "Fixed decoding" means fixed settings; greedy reruns would be identical. Stated confidence per technique was dropped after the pilot: Bielik's per-technique values could not be interpreted (see findings). Temperatures 0.3 and 1.0 on the pilot as an ablation. |
 | 7 | Three prompts per source: P1 zero-shot with instructions in the language of the text; P2 zero-shot with instructions in the other language; P3 few-shot (6 examples) in the language of the text. Same label order and schema everywhere. Few-shot examples are referenced by item ID and filled in at run time. | Defines "language-appropriate" for English data; keeps SemEval text out of released prompt files. |
-| 8 | Models: Bielik-11B-v3.0-Instruct and PLLuM-12B-chat (both Apache 2.0, checked today), plus a size-matched 12B multilingual model in place of Gemma 4 E2B. Recommended: Mistral-Nemo-Instruct-2407, the base model of PLLuM-12B, so that pair differs only by Polish adaptation. Alternative: Gemma-3-12B-it. | Removes the size gap the review criticised. Gemma 4 has no 12B variant (E2B, E4B, 26B, 31B), which the rebuttal should state. |
-| 9 | One engine and one quantization family for all main runs, chosen in a timeboxed test on 19-20 Nov. The code talks to an OpenAI-compatible endpoint, so the engine is a config value. Default: vLLM with 4-bit AWQ, as the proposal promised. Fallback: llama.cpp server with the model authors' Q4_K_M GGUF files. Ollama is excluded (see the findings below). | An official AWQ build exists for Bielik; for PLLuM only a community one was found. Uniformity across models matters more than speed. The video PoC uses llama.cpp server, which passed the checks on CPU. |
+| 8 | Models: Bielik-11B-v3.0-Instruct (official AWQ build) and PLLuM-12B-chat-2512 (community AWQ build; the proposal named the 2412 release, 2512 is the current one), both Apache 2.0, plus a size-matched 12B multilingual model in place of Gemma 4 E2B. Recommended: Mistral-Nemo-Instruct-2407 (community AWQ build), the base model of PLLuM-12B, so that pair differs only by Polish adaptation. Alternative: Gemma-3-12B-it. To confirm with the team. | Removes the size gap the review criticised. Gemma 4 has no 12B variant (E2B, E4B, 26B, 31B), which the rebuttal should state. |
+| 9 | One engine and one quantization family for all main runs: vLLM 0.33.0 with 4-bit AWQ weights (W4A16), settled on 15 Nov after the PoC passed the server checks. The code talks to any OpenAI-compatible endpoint, so the engine is a config value. Ollama is excluded (see the findings below). | As the proposal promised; AWQ builds exist for all three models; vLLM gives prefix caching, continuous batching, per-request seeds and prompt log-probabilities for teacher forcing. |
 | 10 | Second method class: TF-IDF with one-vs-rest logistic regression trained on the train split, used as a task baseline and as a confidence signal. Fine-tuned encoders are cited from the literature only. | Criterion 2.3 needs two method classes; the topic card excludes fine-tuning. |
 | 11 | Negative controls: random routing, shuffled scores, and two trivial signals (number of predicted labels, text length). | If "accept every empty prediction" matches consistency, consistency adds nothing. |
 | 12 | English SemEval is a secondary source with a reduced sample and is the first thing cut if compute runs short. | The review flagged the added compute. |
@@ -110,26 +110,46 @@ Complete policies are also compared by cost: one greedy run with its own log-pro
 
 **Error analysis.** At least 60 wrong predictions (20 per source), balanced between consistent-and-wrong and inconsistent-and-wrong, coded by two members into named types with counts. SemEval items appear by ID and paraphrase only.
 
-**Compute estimate (planning figure; the pilot's measured throughput replaces it in the Phase 2 report)**
+**Compute estimate (from the PoC measurements of 16 Nov; MIPD still to be measured)**
 
-| Quantity | Value |
+Measured on the 12 GB card, all stages per item (five sampled runs, greedy run, scoring where needed, stated confidence):
+
+| Run | Parallel requests | Seconds per paragraph |
+|---|---|---|
+| Bielik, SemEval PL calibration (1,002 paragraphs), P1 | 40 | 2.3 |
+| Bielik, SemEval PL pilot, P3 (few-shot, 4,600-token prefix) | 32 | 3.4 |
+| PLLuM, SemEval PL pilot, P1 / P2 | 20 | 2.8 / 2.4 |
+
+| Quantity | Estimate per model |
 |---|---|
-| Items per model | 6,421 (1,800 PL, 2,500 EN, 2,121 MIPD) |
-| Core generations | 6,421 x 3 prompts x 7 = 134,841 per model; 404,523 for three models |
-| Seed-batch replicates (P1, test only) | 38,210 per model; 114,630 for three models |
-| Output tokens | about 29 M per model, 87 M in total (about 200 tokens per SemEval output, 100 per MIPD output) |
-| GPU time | about 16 h at 1,500 tokens/s (vLLM) or about 60 h at 400 tokens/s (llama.cpp), plus a few hours for MIPD prompt processing |
-| Assignment | MIPD on the 16 GB card, SemEval on the 12 GB card |
+| SemEval paragraphs still to run (PL calibration and test, EN pilot, calibration and test) | about 4,500 |
+| SemEval, three prompts | about 8-9 s per paragraph, 10-12 GPU-hours |
+| Two extra seed batches on the test sets, P1 only | about 2 GPU-hours |
+| MIPD (2,421 articles, three prompts; prompts up to about 7,500 tokens for P1 and 11,000 for P3) | not measured; about 5 GPU-hours assumed |
+| Total | about 18 GPU-hours, about 55 for three models |
 
-If measured throughput puts the total above 80 GPU-hours, cut in this order: English sample size, replicates, shorter label keys in the output.
+An answer takes 262 output tokens (Bielik) or 272 (PLLuM) for SemEval, not the 200 the first plan assumed; the time per item absorbs this. The 12B models need GPU_UTIL 0.95 and a 6,144-token context to fit on the 12 GB card, so MIPD and most 12B runs belong on the 16 GB card. If the total goes above 80 GPU-hours, cut in this order: English sample size, replicates, shorter label keys in the output.
 
-**Findings from the first server tests (15 Nov, small model on CPU)**
+**Findings from the PoC (15-16 Nov)**
 
-- A SemEval answer took about 290 output tokens, not the 200 assumed above, because servers pretty-print the JSON. The token and GPU-hour figures in the table are therefore about 45% too low until the pilot measures them on the real models.
-- Ollama's OpenAI-compatible endpoint is unsuitable. It applies a repetition penalty of 1.1 that cannot be set per request; the penalty works against the repeated "0" and flipped a greedy decision whose own probability for "1" was 0.44. It also emits the keys alphabetically, which changes the order in which decisions are made.
-- llama.cpp server with `repeat_penalty 1.0`, `top_k 0`, `min_p 0` kept the schema order, gave greedy decisions consistent with the token probabilities, and honoured the seed.
-- Gemma 4 E2B reasons before answering unless told not to, which consumed the token budget and produced free text. Any reasoning-capable model must have this switched off.
-- `routing.analyze` now reports these server checks for every run, so the engine test on 19-20 Nov has pass/fail criteria.
+- Serving. vLLM 0.33.0 on the 12 GB card runs Bielik with 5.8 GiB of weights. With GPU_UTIL 0.90 the KV cache holds 19,200 tokens; 40 parallel requests give about 880 output tokens/s (16 requests: 520). The prefix-cache hit rate is 98%, because every prompt shares the instructions and the five runs of a paragraph are sent together. Two start-up errors and their fixes are in `scripts/serve_vllm.sh` (memory share, FlashInfer sampler).
+- Server checks pass for both models run so far: no invalid output in about 18,000 requests, greedy decisions agree with their token probabilities (exact ties at 0.5 excepted), keys come in label order, and the share of sampled positives matches what the probabilities predict.
+- Answer layout. Models write the JSON differently: Bielik compactly, PLLuM one key per line. Scoring and the stated-confidence turn must show the vote in the model's own layout; with Bielik's layout PLLuM's teacher-forced probabilities were off by up to 0.56. Fixed before any PLLuM result was used.
+- Stated confidence. Asked per technique, Bielik's values could not be interpreted (constant over all techniques in half of the paragraphs, otherwise switching meaning), so it is asked once per answer. Bielik then gives values between 50 and 100. PLLuM answers 0 for every paragraph to the Polish question and almost only 0 or 100 to the English one, with or without the format constraint.
+- Ollama's OpenAI-compatible endpoint is unsuitable: a fixed repetition penalty of 1.1 flips decisions away from the repeated "0", and it sorts the keys alphabetically. Reasoning-capable models (Gemma 4) must have reasoning switched off.
+- First results (SemEval PL; pilot 219 paragraphs, calibration 1,002). Exact-set accuracy of the vote is 0.28-0.31 for both models, below the 0.45-0.46 of always answering "no technique". AUROC for exact-set correctness:
+
+| | Bielik P1 pilot | Bielik P2 pilot | Bielik P3 pilot | Bielik P1 calibration | PLLuM P1 pilot | PLLuM P2 pilot |
+|---|---|---|---|---|---|---|
+| Jaccard consistency (primary) | 0.57 | 0.70 | 0.60 | 0.61 | 0.71 | 0.71 |
+| Modal-set frequency | 0.68 | 0.74 | 0.65 | 0.73 | 0.84 | 0.80 |
+| Token probability (vote) | 0.72 | 0.81 | 0.71 | 0.80 | 0.89 | 0.84 |
+| Stated confidence | 0.69 | 0.76 | 0.54 | 0.69 | 0.50 | 0.50 |
+| TF-IDF probability | 0.88 | 0.91 | 0.83 | 0.88 | 0.85 | 0.85 |
+| Control: fewer predicted techniques | 0.89 | 0.88 | 0.82 | 0.93 | 0.86 | 0.83 |
+
+- With Bielik, every model-based signal is below the trivial control: the vote is exactly right for 78% of paragraphs where it predicts no technique and for under 10% of the others. Fifteen runs instead of five do not change the Jaccard AUROC (0.569 both). With PLLuM, token probability and modal-set frequency reach or pass the control on the pilot; the calibration run will show whether this holds.
+- Routing (thresholds from Bielik's calibration run, applied to its pilot): no model-based signal accepts 50 calibration paragraphs at 90% exact-set accuracy; Jaccard consistency is infeasible even at 80%. Only TF-IDF is feasible at 90%, covering 12% of the pilot at 85% accepted accuracy. Exact-set routing of whole paragraphs is therefore unlikely to work for Bielik; decision-level routing (accepting individual technique decisions) is the planned secondary analysis and should be reported next to it.
 
 ## Work plan
 
