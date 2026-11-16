@@ -42,4 +42,9 @@ score_voted: true     # teacher-forced log-probability of the majority vote
 score_when_greedy_agrees: false   # where vote == greedy answer the greedy pass gives the same probabilities
 verbal: true          # stated confidence in the majority vote
 verbal_greedy: true   # stated confidence in the greedy answer where it differs from the vote
-max_concurrency: 16
+# Parallel requests. Measured on 16 Nov 2026 (RTX 4070 SUPER 12 GB, GPU_UTIL=0.90, 19,200 KV-cache
+# tokens), sampled runs with prompt P1, output tokens/s: 16 -> 520, 32 -> 710-750, 40 -> 880,
+# 48 -> 920 at 92% KV cache. Prompt P3 (4,600-token shared prefix): 24 -> 520, 32 -> 580 at 78%.
+# Above what the cache holds, vLLM preempts requests and throughput stops rising. Use
+# --concurrency 32 for P3; with the default GPU_UTIL=0.82 (14,336 tokens) use 32 for P1 and P2.
+max_concurrency: 40

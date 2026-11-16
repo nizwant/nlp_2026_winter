@@ -9,7 +9,9 @@
 #   - VLLM_USE_FLASHINFER_SAMPLER=0 selects vLLM's own PyTorch top-p sampler. The FlashInfer
 #     sampler compiles CUDA code on first use and needs ninja and a matching CUDA toolkit;
 #   - GPU_UTIL is the share of the whole card vLLM may take. On a 12 GB card with a desktop
-#     session about 9.9 GiB are free, so the default is 0.82.
+#     session and a browser about 9.9 GiB are free, so the default is 0.82 (14,336 KV-cache tokens
+#     for Bielik). With only the desktop shell running (about 0.2 GB), GPU_UTIL=0.90 works and
+#     gives 19,200 tokens, enough for 40 parallel requests (configs/bielik.yaml).
 set -euo pipefail
 
 MODEL_KEY="${1:-bielik}"
