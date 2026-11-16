@@ -127,3 +127,16 @@ def test_fake_engine_is_deterministic_and_seed_sensitive():
     assert any(call(seed, 0.7).labels != call(1, 0.7).labels for seed in range(2, 30))
     greedy = call(1, 0.0)
     assert [int(p >= 0.5) for p in greedy.p1] == greedy.labels
+
+
+def test_answers_are_shown_back_in_the_models_own_layout():
+    from routing.engines import answer_json, parse_decisions
+
+    labels = ["A", "B-c", "D"]
+    assert answer_json(labels, [0, 1, 0]) == '{"A": 0, "B-c": 1, "D": 0}'  # compact by default (Bielik)
+    indented = '{\n    "A": 1,\n    "B-c": 0,\n    "D": 0\n}'  # PLLuM's layout
+    assert answer_json(labels, [0, 1, 1], indented) == '{\n    "A": 0,\n    "B-c": 1,\n    "D": 1\n}'
+    assert answer_json(labels, [1, 0, 0], indented) == indented  # same decisions: the same text
+    # A template that lacks a key cannot be used; the compact layout is the fallback.
+    assert answer_json(labels, [0, 1, 0], '{"A": 1, "D": 0}') == '{"A": 0, "B-c": 1, "D": 0}'
+    assert parse_decisions(answer_json(labels, [1, 1, 0], indented), labels) == [1, 1, 0]

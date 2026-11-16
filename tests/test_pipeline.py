@@ -112,7 +112,10 @@ def test_run_and_analyse_with_the_fake_engine(tmp_path, monkeypatch):
         "engine": {"kind": "fake", "model": "fake"},
         "limit": 60,
     }
-    run_dir = asyncio.run(run.run(config, show_progress=False))
+    from routing.engines import FakeEngine
+
+    engine = FakeEngine()
+    run_dir = asyncio.run(run.run(config, engine=engine, show_progress=False))
 
     lines = (run_dir / "generations.jsonl").read_text(encoding="utf-8").splitlines()
     assert '"text"' not in lines[0]  # the log never stores the paragraph
@@ -126,6 +129,10 @@ def test_run_and_analyse_with_the_fake_engine(tmp_path, monkeypatch):
     assert 0 < len(disagree) < 60
     assert {r["item_id"] for r in by_kind["score"]} == disagree
     assert len(lines) == 60 * 7 + len(disagree)
+    # Every answer shown back to the model (scoring, stated confidence) uses its own greedy layout.
+    assert len(engine.templates_seen) == len(by_kind["score"]) + len(by_kind["verbal"])
+    assert all(template and template.startswith("{\n    ") for template in engine.templates_seen)
+    assert all(r["answer"] for r in by_kind["greedy"]) and not any(r.get("answer") for r in by_kind["sample"])
 
     # A second invocation finds everything done and adds nothing.
     asyncio.run(run.run(config, show_progress=False))

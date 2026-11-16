@@ -205,6 +205,7 @@ def _record(config: dict, item_id: str, kind: str, seed: int, batch: int, temper
         "latency_s": round(result.latency_s, 4),
         "error": result.error,
         "raw": result.raw,
+        "answer": result.answer,
         "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
 
@@ -287,11 +288,16 @@ async def run(config: dict, engine: Engine | None = None, show_progress: bool = 
                     jobs.append((item_id, base_seed, 0, 0.0, greedy["labels"]))
         return jobs
 
+    # The model's own greedy answer of each item: its layout is used when an answer is shown back
+    # to the model (scoring, stated confidence), see engines.answer_json.
+    templates: dict[str, str] = {}
+
     async def call(stage: str, item_id: str, seed: int, temperature: float, decisions) -> Generation:
+        template = templates.get(item_id)
         if stage == "score":
-            return await engine.score(messages[item_id], labels, decisions)
+            return await engine.score(messages[item_id], labels, decisions, template)
         if stage in ("verbal", "verbal_greedy"):
-            return await engine.verbalise(messages[item_id], labels, decisions, followup, seed=seed)
+            return await engine.verbalise(messages[item_id], labels, decisions, followup, seed=seed, template=template)
         return await engine.generate(
             messages[item_id],
             labels,
@@ -303,7 +309,12 @@ async def run(config: dict, engine: Engine | None = None, show_progress: bool = 
 
     with open(log_path, "a", encoding="utf-8") as log:
         for stage in STAGES:
-            jobs = jobs_for(stage, _finished(log_path))
+            done = _finished(log_path)
+            templates.clear()
+            templates.update(
+                {item_id: record["answer"] for (item_id, kind, _), record in done.items() if kind == "greedy" and record.get("answer")}
+            )
+            jobs = jobs_for(stage, done)
             if not jobs:
                 continue
             counts = {"generations": 0, "invalid": 0, "prompt_tokens": 0, "output_tokens": 0}

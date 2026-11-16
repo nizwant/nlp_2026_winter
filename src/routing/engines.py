@@ -52,6 +52,7 @@ class Generation:
     latency_s: float = 0.0
     error: str | None = None
     raw: str | None = None  # kept only for invalid outputs, for debugging
+    answer: str | None = None  # greedy passes: the answer as written (technique names and 0/1 only)
     verbal_overall: float | None = None  # stated probability (0-1) that the whole answer is right
 
 
@@ -70,7 +71,11 @@ class Engine(Protocol):
     ) -> Generation: ...
 
     async def score(
-        self, messages: list[dict[str, str]], labels: Sequence[str], decisions: Sequence[int]
+        self,
+        messages: list[dict[str, str]],
+        labels: Sequence[str],
+        decisions: Sequence[int],
+        template: str | None = None,
     ) -> Generation: ...
 
     async def verbalise(
@@ -81,6 +86,7 @@ class Engine(Protocol):
         followup: str,
         *,
         seed: int,
+        template: str | None = None,
     ) -> Generation: ...
 
 
@@ -94,9 +100,27 @@ def decision_schema(labels: Sequence[str]) -> dict:
     }
 
 
-def answer_json(labels: Sequence[str], decisions: Sequence[int]) -> str:
-    """A set of decisions written the way the models write their answers."""
-    return json.dumps({label: int(value) for label, value in zip(labels, decisions)})
+def answer_json(labels: Sequence[str], decisions: Sequence[int], template: str | None = None) -> str:
+    """A set of decisions written the way the model writes its answers.
+
+    Models differ in layout: Bielik writes compact JSON (`{"a": 0, "b": 1}`), PLLuM indents every
+    key on its own line. Teacher forcing and the stated-confidence turn must show the model text
+    in its own layout, otherwise the probabilities are conditioned on text it would not write.
+    `template` is one of the model's own answers for the same item (its greedy answer); the
+    decisions are written into it digit by digit. Without a usable template the compact layout is
+    used, which is Bielik's.
+    """
+    decisions = [int(value) for value in decisions]
+    if template is not None:
+        text = template
+        for label, value in zip(labels, decisions):
+            text, found = re.subn(r'("%s"\s*:\s*)[01]' % re.escape(label), lambda m, v=value: m.group(1) + str(v), text, count=1)
+            if not found:
+                break
+        else:
+            if parse_decisions(text, labels) == decisions:
+                return text
+    return json.dumps({label: value for label, value in zip(labels, decisions)})
 
 
 CONFIDENCE_KEY = "confidence"
@@ -281,6 +305,7 @@ class OpenAIEngine:
             return result
 
         if want_probabilities:
+            result.answer = text
             logprobs = getattr(choice, "logprobs", None)
             content = getattr(logprobs, "content", None) if logprobs is not None else None
             if not content:
@@ -302,7 +327,7 @@ class OpenAIEngine:
         return result
 
 
-    async def score(self, messages, labels, decisions) -> Generation:
+    async def score(self, messages, labels, decisions, template=None) -> Generation:
         """Teacher forcing: P(decision = 1) at every decision position of the given answer.
 
         The answer is sent as the unfinished final assistant turn and the server returns the
@@ -310,7 +335,7 @@ class OpenAIEngine:
         generated apart from the one token the API requires. Servers without this extension
         return an error, which is logged; the signal is then reported as unavailable.
         """
-        answer = answer_json(labels, decisions)
+        answer = answer_json(labels, decisions, template)
         request = {
             "model": self.model,
             "messages": [*messages, {"role": "assistant", "content": answer}],
@@ -362,7 +387,7 @@ class OpenAIEngine:
             result.p1, result.n_bounded = extracted
         return result
 
-    async def verbalise(self, messages, labels, decisions, followup, *, seed) -> Generation:
+    async def verbalise(self, messages, labels, decisions, followup, *, seed, template=None) -> Generation:
         """Ask in a follow-up turn how likely the given answer is to be correct as a whole.
 
         Only one value is asked for. A per-technique variant was tried on 12 pilot paragraphs
@@ -375,7 +400,7 @@ class OpenAIEngine:
             "model": self.model,
             "messages": [
                 *messages,
-                {"role": "assistant", "content": answer_json(labels, decisions)},
+                {"role": "assistant", "content": answer_json(labels, decisions, template)},
                 {"role": "user", "content": followup},
             ],
             "seed": seed,
@@ -423,6 +448,7 @@ class FakeEngine:
     def __init__(self, name: str = "fake", invalid_rate: float = 0.0) -> None:
         self.name = name
         self.invalid_rate = invalid_rate
+        self.templates_seen: list[str | None] = []  # answer layouts passed to score and verbalise
 
     @staticmethod
     def _latent(messages, n_labels: int) -> np.ndarray:
@@ -450,9 +476,12 @@ class FakeEngine:
         )
         if want_probabilities:
             result.p1 = [float(min(max(p, 1e-6), 1 - 1e-6)) for p in latent]
+            # Written in an indented layout, unlike answer_json's default, as some models do.
+            result.answer = json.dumps(dict(zip(labels, result.labels)), indent=4)
         return result
 
-    async def score(self, messages, labels, decisions) -> Generation:
+    async def score(self, messages, labels, decisions, template=None) -> Generation:
+        self.templates_seen.append(template)
         latent = self._latent(messages, len(labels))
         return Generation(
             labels=[int(value) for value in decisions],
@@ -462,7 +491,8 @@ class FakeEngine:
             n_output_tokens=0,
         )
 
-    async def verbalise(self, messages, labels, decisions, followup, *, seed) -> Generation:
+    async def verbalise(self, messages, labels, decisions, followup, *, seed, template=None) -> Generation:
+        self.templates_seen.append(template)
         latent = self._latent(messages, len(labels))
         rng = np.random.default_rng([seed, int(latent[0] * 1e9), 7])
         if rng.random() < self.invalid_rate:
