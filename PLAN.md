@@ -132,24 +132,24 @@ An answer takes 262 output tokens (Bielik) or 272 (PLLuM) for SemEval, not the 2
 
 **Findings from the PoC (15-16 Nov)**
 
-- Serving. vLLM 0.33.0 on the 12 GB card runs Bielik with 5.8 GiB of weights. With GPU_UTIL 0.90 the KV cache holds 19,200 tokens; 40 parallel requests give about 880 output tokens/s (16 requests: 520). The prefix-cache hit rate is 98%, because every prompt shares the instructions and the five runs of a paragraph are sent together. Two start-up errors and their fixes are in `scripts/serve_vllm.sh` (memory share, FlashInfer sampler).
-- Server checks pass for both models run so far: no invalid output in about 18,000 requests, greedy decisions agree with their token probabilities (exact ties at 0.5 excepted), keys come in label order, and the share of sampled positives matches what the probabilities predict.
+- Serving. vLLM 0.33.0 on the 12 GB card runs Bielik with 5.8 GiB of weights. With GPU_UTIL 0.90 the KV cache holds 19,200 tokens; 40 parallel requests give about 880 output tokens/s (16 requests: 520). The prefix-cache hit rate is 98%, because every prompt shares the instructions and the five runs of a paragraph are sent together. Two start-up errors and their fixes are in `scripts/serve_vllm.sh` (memory share, FlashInfer sampler). PLLuM needs GPU_UTIL 0.95 and a 6,144-token context to fit; with 28 parallel requests it gives 651 output tokens/s, and its calibration run (7,796 requests) took 43 minutes.
+- Server checks pass for both models run so far: no invalid output in 26,072 requests, greedy decisions agree with their token probabilities (exact ties at 0.5 excepted), keys come in label order, and the share of sampled positives matches what the probabilities predict.
 - Answer layout. Models write the JSON differently: Bielik compactly, PLLuM one key per line. Scoring and the stated-confidence turn must show the vote in the model's own layout; with Bielik's layout PLLuM's teacher-forced probabilities were off by up to 0.56. Fixed before any PLLuM result was used.
 - Stated confidence. Asked per technique, Bielik's values could not be interpreted (constant over all techniques in half of the paragraphs, otherwise switching meaning), so it is asked once per answer. Bielik then gives values between 50 and 100. PLLuM answers 0 for every paragraph to the Polish question and almost only 0 or 100 to the English one, with or without the format constraint.
 - Ollama's OpenAI-compatible endpoint is unsuitable: a fixed repetition penalty of 1.1 flips decisions away from the repeated "0", and it sorts the keys alphabetically. Reasoning-capable models (Gemma 4) must have reasoning switched off.
-- First results (SemEval PL; pilot 219 paragraphs, calibration 1,002). Exact-set accuracy of the vote is 0.28-0.31 for both models, below the 0.45-0.46 of always answering "no technique". AUROC for exact-set correctness:
+- First results (SemEval PL; pilot 219 paragraphs, calibration 1,002). Exact-set accuracy of the vote is 0.28-0.32 for both models, below the 0.45-0.46 of always answering "no technique". AUROC for exact-set correctness:
 
-| | Bielik P1 pilot | Bielik P2 pilot | Bielik P3 pilot | Bielik P1 calibration | PLLuM P1 pilot | PLLuM P2 pilot |
-|---|---|---|---|---|---|---|
-| Jaccard consistency (primary) | 0.57 | 0.70 | 0.60 | 0.61 | 0.71 | 0.71 |
-| Modal-set frequency | 0.68 | 0.74 | 0.65 | 0.73 | 0.84 | 0.80 |
-| Token probability (vote) | 0.72 | 0.81 | 0.71 | 0.80 | 0.89 | 0.84 |
-| Stated confidence | 0.69 | 0.76 | 0.54 | 0.69 | 0.50 | 0.50 |
-| TF-IDF probability | 0.88 | 0.91 | 0.83 | 0.88 | 0.85 | 0.85 |
-| Control: fewer predicted techniques | 0.89 | 0.88 | 0.82 | 0.93 | 0.86 | 0.83 |
+| | Bielik P1 pilot | Bielik P2 pilot | Bielik P3 pilot | Bielik P1 calibration | PLLuM P1 pilot | PLLuM P2 pilot | PLLuM P1 calibration |
+|---|---|---|---|---|---|---|---|
+| Jaccard consistency (primary) | 0.57 | 0.70 | 0.60 | 0.61 | 0.71 | 0.71 | 0.61 |
+| Modal-set frequency | 0.68 | 0.74 | 0.65 | 0.73 | 0.84 | 0.80 | 0.78 |
+| Token probability (vote) | 0.72 | 0.81 | 0.71 | 0.80 | 0.89 | 0.84 | 0.84 |
+| Stated confidence | 0.69 | 0.76 | 0.54 | 0.69 | 0.50 | 0.50 | 0.50 |
+| TF-IDF probability | 0.88 | 0.91 | 0.83 | 0.88 | 0.85 | 0.85 | 0.80 |
+| Control: fewer predicted techniques | 0.89 | 0.88 | 0.82 | 0.93 | 0.86 | 0.83 | 0.87 |
 
-- With Bielik, every model-based signal is below the trivial control: the vote is exactly right for 78% of paragraphs where it predicts no technique and for under 10% of the others. Fifteen runs instead of five do not change the Jaccard AUROC (0.569 both). With PLLuM, token probability and modal-set frequency reach or pass the control on the pilot; the calibration run will show whether this holds.
-- Routing (thresholds from Bielik's calibration run, applied to its pilot): no model-based signal accepts 50 calibration paragraphs at 90% exact-set accuracy; Jaccard consistency is infeasible even at 80%. Only TF-IDF is feasible at 90%, covering 12% of the pilot at 85% accepted accuracy. Exact-set routing of whole paragraphs is therefore unlikely to work for Bielik; decision-level routing (accepting individual technique decisions) is the planned secondary analysis and should be reported next to it.
+- With Bielik, every model-based signal is below the trivial control: the vote is exactly right for 78% of paragraphs where it predicts no technique and for under 10% of the others. Fifteen runs instead of five do not change the Jaccard AUROC (0.569 both). With PLLuM, token probability and modal-set frequency reach or pass the control on the pilot, but not on its calibration run: token probability 0.84 (0.80-0.87) and modal-set frequency 0.78 stay below the control (0.87), although token probability beats TF-IDF (0.80). Jaccard consistency is 0.61 (0.56-0.66) for both models on calibration, and for PLLuM 0.35 on paragraphs that contain a technique, below chance. Of the 1,002 calibration paragraphs, all five PLLuM runs agree on 14.5%, and 71% of those are right.
+- Routing (thresholds from Bielik's calibration run, applied to its pilot): no model-based signal accepts 50 calibration paragraphs at 90% exact-set accuracy; Jaccard consistency is infeasible even at 80%. Only TF-IDF is feasible at 90%, covering 12% of the pilot at 85% accepted accuracy. With PLLuM's thresholds applied to its pilot, token probability is feasible at 80% and accepts 15% of the pilot at 88% accepted accuracy (0.67-0.97); no signal is feasible at 90%, and Jaccard consistency at no target. Exact-set routing of whole paragraphs is therefore unlikely to work for either model; decision-level routing (accepting individual technique decisions) is the planned secondary analysis and should be reported next to it.
 
 ## Work plan
 
