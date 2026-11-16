@@ -1,6 +1,7 @@
 """End-to-end checks on the real prepared data with the fake engine. Skipped when data is absent."""
 
 import asyncio
+import json
 import math
 
 import numpy as np
@@ -114,13 +115,21 @@ def test_run_and_analyse_with_the_fake_engine(tmp_path, monkeypatch):
     run_dir = asyncio.run(run.run(config, show_progress=False))
 
     lines = (run_dir / "generations.jsonl").read_text(encoding="utf-8").splitlines()
-    # five samples, one greedy pass, one scoring pass and one stated-confidence query per item
-    assert len(lines) == 60 * 8
     assert '"text"' not in lines[0]  # the log never stores the paragraph
+    records = [json.loads(line) for line in lines]
+    by_kind = {kind: [r for r in records if r["kind"] == kind] for kind in ("sample", "greedy", "score", "verbal")}
+    # five samples, one greedy pass and one stated-confidence query per item ...
+    assert [len(by_kind[k]) for k in ("sample", "greedy", "verbal")] == [300, 60, 60]
+    # ... and a scoring request only where the vote differs from the greedy answer.
+    votes = {r["item_id"]: r["labels"] for r in by_kind["verbal"]}  # the verbal query assesses the vote
+    disagree = {r["item_id"] for r in by_kind["greedy"] if r["labels"] != votes[r["item_id"]]}
+    assert 0 < len(disagree) < 60
+    assert {r["item_id"] for r in by_kind["score"]} == disagree
+    assert len(lines) == 60 * 7 + len(disagree)
 
     # A second invocation finds everything done and adds nothing.
     asyncio.run(run.run(config, show_progress=False))
-    assert len((run_dir / "generations.jsonl").read_text(encoding="utf-8").splitlines()) == 480
+    assert len((run_dir / "generations.jsonl").read_text(encoding="utf-8").splitlines()) == len(lines)
 
     summary = analyze.analyse(run_dir, n_resamples=50)
     assert summary["n_items_complete"] == 60
@@ -132,7 +141,13 @@ def test_run_and_analyse_with_the_fake_engine(tmp_path, monkeypatch):
         "verbalised confidence",
         "control: random",
     }
-    assert summary["n_items_all_signals"] == 60
+    assert summary["n_items_all_signals"] == 60  # teacher-forced signal for every item
+    assert summary["n_forced_from_greedy"] == 60 - len(disagree)
+    # Policies are costed per request: five sampled runs cost five sample requests.
+    seconds = analyze._stage_seconds(run_dir)
+    policy = {row["policy"]: row for row in summary["policies"]}
+    assert policy["5 sampled runs + consistency"]["seconds per item"] == pytest.approx(5 * seconds["sample"], abs=1e-3)
+    assert policy["5 sampled runs + teacher-forced log-probability"]["requests per item"] == 6
     assert {row["policy"] for row in summary["policies"]} >= {
         "5 sampled runs + consistency",
         "1 greedy run + its own log-probability",
@@ -181,8 +196,10 @@ def test_batches_few_shot_and_the_test_lock(tmp_path, monkeypatch):
         "engine": {"kind": "fake", "model": "fake"},
         "limit": 40,
     }
-    run_dir = asyncio.run(run.run(config, show_progress=False))
+    run_dir = asyncio.run(run.run({**config, "score_when_greedy_agrees": True}, show_progress=False))
     summary = analyze.analyse(run_dir, n_resamples=20)
+    assert summary["requests"]["score"]["total"] == 40  # every vote scored when asked to
+    assert summary["n_forced_from_greedy"] == 0
     assert len(summary["batches"]) == 3
     assert summary["requests"]["sample"]["total"] == 40 * 15
     assert summary["n_items_complete"] == 40

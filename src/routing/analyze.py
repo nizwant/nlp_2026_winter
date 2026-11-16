@@ -92,7 +92,11 @@ def assemble(run_dir: Path) -> dict:
         vote[row] = signals.majority_vote(samples[row, 0])
 
     # Confidence queries count only if they assessed the decisions that are scored here.
+    # Where the greedy answer equals the vote, the greedy pass conditioned every decision token on
+    # the same prefix as teacher forcing would, so its probabilities stand in for a scoring request
+    # (routing.run skips those requests unless score_when_greedy_agrees is set).
     p1_forced = np.full((n_items, n_labels), np.nan)
+    forced_from_greedy = np.zeros(n_items, dtype=bool)
     verbal_overall = np.full(n_items, np.nan)
     verbal_greedy_overall = np.full(n_items, np.nan)
     for row in range(n_items):
@@ -100,6 +104,14 @@ def assemble(run_dir: Path) -> dict:
         record = assessed["score"].get(row)
         if record and complete[row, 0] and record["labels"] == target and record.get("p1") is not None:
             p1_forced[row] = record["p1"]
+        elif (
+            complete[row, 0]
+            and arrays["has_greedy"][row]
+            and arrays["greedy"][row].tolist() == target
+            and not np.isnan(arrays["p1_greedy"][row]).any()
+        ):
+            p1_forced[row] = arrays["p1_greedy"][row]
+            forced_from_greedy[row] = True
         record = assessed["verbal"].get(row)
         if record and complete[row, 0] and record["labels"] == target and record.get("verbal_overall") is not None:
             verbal_overall[row] = record["verbal_overall"]
@@ -120,6 +132,7 @@ def assemble(run_dir: Path) -> dict:
         "complete": complete,
         "vote": vote,
         "p1_forced": p1_forced,
+        "forced_from_greedy": forced_from_greedy,
         "verbal_overall": verbal_overall,
         "verbal_greedy_overall": verbal_greedy_overall,
         "generations": generations,
@@ -332,36 +345,37 @@ def analyse(run_dir: Path, n_resamples: int = 1000, min_support: int = 30) -> di
         quality["single greedy run"] = task_quality(gold[has_greedy], greedy[has_greedy])
 
     # Complete policies: what is accepted is the prediction of that policy, scored by its own signal.
-    stage_seconds = _stage_seconds(run_dir, int(len(data["items"])))
+    # Each policy is costed as if run on its own: n_samples sampled runs plus one scoring or
+    # stated-confidence request per item, at the measured seconds per request of each stage.
+    stage_seconds = _stage_seconds(run_dir)
+    k = int(data["config"]["n_samples"])
     policies = [
-        _policy("5 sampled runs + consistency", correct, primary, 5, ["sample"], stage_seconds),
+        _policy(f"{k} sampled runs + consistency", correct, primary, {"sample": k}, stage_seconds),
         _policy(
-            "5 sampled runs + teacher-forced log-probability",
+            f"{k} sampled runs + teacher-forced log-probability",
             correct,
             table["log-probability: voted set, teacher-forced"].to_numpy(),
-            6,
-            ["sample", "score"],
+            {"sample": k, "score": 1},
             stage_seconds,
         ),
         _policy(
-            "5 sampled runs + verbalised confidence",
+            f"{k} sampled runs + verbalised confidence",
             correct,
             table["verbalised confidence"].to_numpy(),
-            6,
-            ["sample", "verbal"],
+            {"sample": k, "verbal": 1},
             stage_seconds,
         ),
     ]
     if has_greedy.any():
         greedy_correct = (greedy == gold).all(axis=1)
         own = np.where(has_greedy, _mean_log(signals.decision_confidence(p1_greedy, greedy)), np.nan)
-        policies.append(_policy("1 greedy run + its own log-probability", greedy_correct, own, 1, ["greedy"], stage_seconds))
+        policies.append(_policy("1 greedy run + its own log-probability", greedy_correct, own, {"greedy": 1}, stage_seconds))
         stated = np.where(has_greedy, data["verbal_greedy_overall"][keep], np.nan)
         # Only when the run asked about every greedy answer; otherwise the values cover just the
         # items whose greedy answer equals the vote, which is not a fair sample.
         if data["config"].get("verbal_greedy") and not np.isnan(stated).all():
             policies.append(
-                _policy("1 greedy run + verbalised confidence", greedy_correct, stated, 2, ["greedy", "verbal"], stage_seconds)
+                _policy("1 greedy run + verbalised confidence", greedy_correct, stated, {"greedy": 1, "verbal": 1}, stage_seconds)
             )
 
     # Independent batches of sampled runs: how much the main numbers move between them.
@@ -424,6 +438,7 @@ def analyse(run_dir: Path, n_resamples: int = 1000, min_support: int = 30) -> di
         "n_items_in_run": int(len(data["items"])),
         "n_items_complete": int(n),
         "n_items_all_signals": int(common.sum()),
+        "n_forced_from_greedy": int(data["forced_from_greedy"][keep].sum()),
         "n_articles": int(len(np.unique(groups))),
         "requests": {kind: {"total": int(r["size"]), "invalid": int(r["size"] - r["sum"])} for kind, r in by_kind.iterrows()},
         "invalid_generations": int((~generations["valid"]).sum()),
@@ -456,25 +471,31 @@ def analyse(run_dir: Path, n_resamples: int = 1000, min_support: int = 30) -> di
     return summary
 
 
-def _stage_seconds(run_dir: Path, n_items: int) -> dict[str, float]:
-    """Wall-clock seconds per item for each kind of request, summed over resumed invocations."""
+def _stage_seconds(run_dir: Path) -> dict[str, float]:
+    """Wall-clock seconds per request for each kind of request, over all resumed invocations.
+
+    Per request, not per item: a run with several seed batches, or one that scores only some
+    items, would otherwise charge a policy for requests it does not make.
+    """
     meta_path = run_dir / "meta.json"
-    if not meta_path.exists() or n_items == 0:
+    if not meta_path.exists():
         return {}
     seconds: dict[str, float] = {}
+    requests: dict[str, int] = {}
     for entry in json.loads(meta_path.read_text(encoding="utf-8")):
         for stage, numbers in entry.get("stages", {}).items():
             seconds[stage] = seconds.get(stage, 0.0) + float(numbers["wall_seconds"])
-    return {stage: round(value / n_items, 4) for stage, value in seconds.items()}
+            requests[stage] = requests.get(stage, 0) + int(numbers["generations"])
+    return {stage: round(seconds[stage] / requests[stage], 4) for stage in seconds if requests[stage]}
 
 
-def _policy(name: str, correct: np.ndarray, score: np.ndarray, requests: int, stages: list[str], seconds: dict) -> dict:
+def _policy(name: str, correct: np.ndarray, score: np.ndarray, requests: dict[str, int], seconds: dict) -> dict:
     have = ~np.isnan(score)
-    known = all(stage in seconds for stage in stages)
+    known = all(stage in seconds for stage in requests)
     return {
         "policy": name,
-        "requests per item": requests,
-        "seconds per item": round(sum(seconds[stage] for stage in stages), 3) if known else float("nan"),
+        "requests per item": sum(requests.values()),
+        "seconds per item": round(sum(seconds[s] * n for s, n in requests.items()), 3) if known else float("nan"),
         "exact-set accuracy": float(correct[have].mean()) if have.any() else float("nan"),
         "AUROC": auroc(correct[have], score[have]),
         "items": int(have.sum()),
@@ -495,6 +516,9 @@ def report(summary: dict) -> str:
         f"items with complete runs: {summary['n_items_complete']} of {summary['n_items_in_run']} "
         f"from {summary['n_articles']} articles; with every signal: {summary['n_items_all_signals']}",
         f"requests: {requests}",
+        f"teacher-forced probabilities taken from the greedy pass (greedy answer = vote): "
+        f"{summary.get('n_forced_from_greedy', 0)} items; scored separately: "
+        f"{summary['requests'].get('score', {}).get('total', 0)} requests",
         f"gold empty: {summary['share_gold_empty']:.1%}; voted set exactly right: {summary['share_vote_correct']:.1%}; "
         f"all runs identical: {summary['share_fully_consistent']:.1%} "
         f"(exactly right when identical: {summary['accuracy_when_fully_consistent']:.1%}, "

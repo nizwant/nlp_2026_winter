@@ -39,6 +39,7 @@ top_p: 0.95
 base_seed: 1000
 greedy: true          # one run at temperature 0 with the probability of every decision
 score_voted: true     # teacher-forced log-probability of the majority vote
+score_when_greedy_agrees: false   # where vote == greedy answer the greedy pass gives the same probabilities
 verbal: true          # stated confidence in the majority vote
 verbal_greedy: true   # stated confidence in the greedy answer where it differs from the vote
 max_concurrency: 16

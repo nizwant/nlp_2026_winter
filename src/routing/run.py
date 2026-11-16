@@ -14,7 +14,9 @@ Per item the run produces, in this order (each kind is one stage, timed separate
     sample         n_samples generations at the configured temperature, one seed each;
                    n_batches independent batches of them (batch 0 is the main one)
     greedy         one generation at temperature 0 with the probability of every decision
-    score          the majority vote of batch 0 is scored by teacher forcing (no generation)
+    score          the majority vote of batch 0 is scored by teacher forcing (no generation); by
+                   default only where it differs from the greedy answer, because where the two are
+                   equal the greedy pass has already computed the same probabilities
     verbal         a follow-up turn asks how likely the majority vote is to be correct as a whole
     verbal_greedy  the same question about the greedy answer, where it differs from the vote
 
@@ -58,6 +60,7 @@ DEFAULTS = {
     "base_seed": 1000,
     "greedy": True,
     "score_voted": True,
+    "score_when_greedy_agrees": False,
     "verbal": True,
     "verbal_greedy": False,
     "max_concurrency": 8,
@@ -262,6 +265,13 @@ async def run(config: dict, engine: Engine | None = None, show_progress: bool = 
             jobs = [(i, base_seed, 0, 0.0, None) for i in item_ids if (i, "greedy", base_seed) not in done]
         elif stage in ("score", "verbal") and config["score_voted" if stage == "score" else "verbal"]:
             for item_id, vote in _votes(config, item_ids, done).items():
+                if stage == "score" and not config["score_when_greedy_agrees"]:
+                    greedy = done.get((item_id, "greedy", base_seed))
+                    # Same decisions as the vote, so the same prefix at every decision token: the
+                    # greedy pass already holds the teacher-forced probabilities (routing.analyze
+                    # takes them from there).
+                    if greedy is not None and greedy["valid"] and greedy["labels"] == vote and greedy.get("p1"):
+                        continue
                 previous = done.get((item_id, stage, base_seed))
                 # Redo the query if the vote changed since it was made (a sampled run was retried).
                 if previous is None or (previous["valid"] and previous["labels"] != vote):
