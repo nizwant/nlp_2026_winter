@@ -23,7 +23,7 @@ def main() -> None:
         "--host", os.environ.get("VLLM_HOST", "127.0.0.1"),
         "--port", os.environ.get("VLLM_PORT", "8000"),
         "--max-model-len", os.environ.get("MAX_MODEL_LEN", "8192"),
-        "--gpu-memory-utilization", os.environ.get("GPU_MEM_UTIL", "0.85"),
+        "--gpu-memory-utilization", os.environ.get("GPU_MEM_UTIL", "0.82"),
         "--seed", "0",
         *sys.argv[2:],
     ]

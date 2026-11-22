@@ -65,7 +65,8 @@ def lock_mismatches() -> list[str]:
     return bad
 
 
-def gpu_report() -> dict:
+def gpu_report(run_kernel: bool) -> dict:
+    """GPU facts come from NVML, so this process holds no GPU memory when vLLM starts next."""
     import pynvml
     import torch
 
@@ -76,18 +77,20 @@ def gpu_report() -> dict:
 
     if not check(torch.cuda.is_available(), "torch sees a CUDA GPU"):
         return {"driver": driver}
-    major, minor = torch.cuda.get_device_capability(0)
+    handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+    name = pynvml.nvmlDeviceGetName(handle)
+    name = name.decode() if isinstance(name, bytes) else name
+    major, minor = pynvml.nvmlDeviceGetCudaComputeCapability(handle)
     archs = torch.cuda.get_arch_list()
     # A cubin built for sm_XY runs on any GPU of the same major version with minor >= Y.
     nums = [int(re.sub(r"\D", "", a)) for a in archs if a.startswith("sm_")]
     supported = any(n // 10 == major and n % 10 <= minor for n in nums)
-    name = torch.cuda.get_device_name(0)
     check(supported, "torch has kernels for this GPU", f"{name}, sm_{major}{minor}; built for {archs}")
 
-    x = torch.randn(1024, 1024, device="cuda")
-    check(bool(torch.isfinite(x @ x).all()), "CUDA matmul runs")
+    if run_kernel:  # without a model; otherwise vLLM is the (much stronger) kernel test
+        x = torch.randn(1024, 1024, device="cuda")
+        check(bool(torch.isfinite(x @ x).all()), "CUDA matmul runs")
 
-    handle = pynvml.nvmlDeviceGetHandleByIndex(0)
     mem = pynvml.nvmlDeviceGetMemoryInfo(handle)
     print(f"  GPU memory: {mem.used / 2**30:.1f} of {mem.total / 2**30:.1f} GiB already in use")
     return {
@@ -97,6 +100,7 @@ def gpu_report() -> dict:
         "memory_used_before_gib": round(mem.used / 2**30, 2),
         "driver": driver,
         "torch_cuda": torch.version.cuda,
+        "torch_cuda_initialized": torch.cuda.is_initialized(),
         "torch_arch_list": archs,
     }
 
@@ -163,7 +167,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", default="bielik", help="key in configs/models.yaml or a HF repo id")
     ap.add_argument("--no-model", action="store_true", help="skip loading a model")
-    ap.add_argument("--gpu-mem-util", type=float, default=float(os.environ.get("GPU_MEM_UTIL", 0.85)))
+    ap.add_argument("--gpu-mem-util", type=float, default=float(os.environ.get("GPU_MEM_UTIL", "0.82")))
     ap.add_argument("--max-model-len", type=int, default=2048)
     ap.add_argument("--out", type=Path, default=None, help="default: outputs/env_check/<gpu>.json")
     args = ap.parse_args()
@@ -176,7 +180,7 @@ def main() -> int:
     check(os.environ.get("VLLM_USE_FLASHINFER_SAMPLER") == "0", "VLLM_USE_FLASHINFER_SAMPLER=0")
 
     print("\nGPU")
-    gpu = gpu_report()
+    gpu = gpu_report(run_kernel=args.no_model)
 
     report = {
         "date": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),

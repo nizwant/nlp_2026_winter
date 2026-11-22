@@ -118,7 +118,7 @@ def main() -> int:
     ap.add_argument("--paragraphs", type=int, default=100)
     ap.add_argument("--max-tokens", type=int, default=256, help="new tokens per completion")
     ap.add_argument("--max-model-len", type=int, default=2048)
-    ap.add_argument("--gpu-mem-util", type=float, default=float(os.environ.get("GPU_MEM_UTIL", 0.85)))
+    ap.add_argument("--gpu-mem-util", type=float, default=float(os.environ.get("GPU_MEM_UTIL", "0.82")))
     ap.add_argument("--worker", help=argparse.SUPPRESS)
     ap.add_argument("--result", type=Path, help=argparse.SUPPRESS)
     args = ap.parse_args()
@@ -139,7 +139,7 @@ def main() -> int:
             result = Path(tmp) / "result.json"
             cmd = [sys.executable, __file__, "--worker", key, "--result", str(result)]
             cmd += [f"--{k.replace('_', '-')}={v}" for k, v in settings.items()]
-            rc = subprocess.run(cmd).returncode
+            rc = subprocess.run(cmd, check=False).returncode
             results.append(json.loads(result.read_text()) if rc == 0 and result.exists()
                            else {"model": key, "error": f"exit code {rc}, see the log above"})
 

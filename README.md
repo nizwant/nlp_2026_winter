@@ -48,7 +48,7 @@ One Docker image holds everything: vLLM (as a Python library or as an OpenAI-com
 - NVIDIA driver **580 or newer**: `nvidia-smi` must report `CUDA Version: 13.0` or higher.
 - Docker with the NVIDIA runtime. On Ubuntu with apt-installed Docker: install `nvidia-container-toolkit`, then `sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker`. The snap Docker package already includes the runtime. Test with:
   `docker run --rm --runtime=nvidia -e NVIDIA_VISIBLE_DEVICES=all ubuntu:24.04 nvidia-smi`
-- About 25 GB of disk for the image, plus 6–8 GB per model.
+- About 20 GB of disk for the image (18 GB measured), plus 6–8 GB per model.
 
 ### First run
 
@@ -70,6 +70,24 @@ docker compose run --rm dev pytest
 ```
 
 The repository is bind-mounted, so code edits take effect without rebuilding. The host Hugging Face cache (`~/.cache/huggingface`) is mounted too, so weights are downloaded once. vLLM, Triton and torch.compile caches persist in the `cache` volume. Rebuild only when `pyproject.toml` or `uv.lock` changes.
+
+### Models
+
+`configs/models.yaml` pins each model's repository and commit. Load models in code through `routing.models` (`make_llm(get_model("bielik"))`), so every script and notebook uses the same revision, engine arguments and chat-template settings.
+
+| Key | Weights | Role |
+| --- | --- | --- |
+| `bielik` | speakleash/Bielik-11B-v3.0-Instruct-awq (official AWQ) | study |
+| `pllum` | mozarcik/PLLuM-12B-chat-2512-awq (community AWQ) | study |
+| `mistral_nemo` | pbhappliedsystems/Mistral_Nemo_Instruct_2407_4bit_AWQ_Async (community AWQ) | study |
+| `gemma4_e2b` | google/gemma-4-E2B-it-qat-w4a16-ct (official QAT, 4-bit) | smoke tests and speed only; text-only, thinking off |
+
+```bash
+docker compose run --rm dev python scripts/check_env.py --model gemma4_e2b   # smoke test any model
+docker compose run --rm dev python scripts/bench.py                          # tokens/s for all models
+```
+
+`bench.py` runs each model on 100 SemEval PL paragraphs × 5 samples, with every completion forced to 256 new tokens, plus a single-request decode test. It writes `outputs/bench/<gpu>.json`.
 
 ### Changing dependencies
 

@@ -35,5 +35,12 @@ gemma4_e2b:
   # per-layer embedding tables and the vision/audio encoders stay in 16-bit.
   engine_args:
     language_model_only: true   # text only: no image/audio inputs or encoder memory reserve
+    # Inductor's compile-time autotuning benchmarks kernels on random copies of their inputs,
+    # which includes the 4.4 GiB per-layer embedding table: out of memory on a 12 GB card.
+    # Kernels are then tuned on the real tensors at first use instead; compilation and CUDA
+    # graphs stay on.
+    compilation_config:
+      inductor_compile_config:
+        triton.autotune_at_compile_time: false
   chat_template_kwargs:
     enable_thinking: false      # already the template's default; set so it cannot drift

@@ -54,14 +54,18 @@ def llm_kwargs(spec: ModelSpec, **overrides: Any) -> dict[str, Any]:
         "revision": spec.revision,
         "tokenizer_revision": spec.revision,
         "seed": 0,
-        "gpu_memory_utilization": float(os.environ.get("GPU_MEM_UTIL", 0.85)),
-        "max_model_len": int(os.environ.get("MAX_MODEL_LEN", 8192)),
+        "gpu_memory_utilization": float(os.environ.get("GPU_MEM_UTIL", "0.82")),
+        "max_model_len": int(os.environ.get("MAX_MODEL_LEN", "8192")),
         **spec.engine_args,
         **overrides,
     }
 
 
 def make_llm(spec: ModelSpec, **overrides: Any):
+    # vLLM forks its engine process by default, which fails if this process has already touched
+    # CUDA (torch.cuda.* in a script or notebook cell). Spawn always works; scripts that call
+    # this need an `if __name__ == "__main__":` guard.
+    os.environ.setdefault("VLLM_WORKER_MULTIPROC_METHOD", "spawn")
     from vllm import LLM
 
     return LLM(**llm_kwargs(spec, **overrides))

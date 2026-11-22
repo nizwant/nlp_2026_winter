@@ -36,8 +36,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 COPY README.md ./
 COPY src ./src
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync \
- && chmod -R a+rX /opt/python /opt/venv
+    uv sync
 
 # Containers run as the host user (see compose.yaml), whose UID may not exist in the image.
 # HOME and the caches are world-writable so any UID works.
@@ -46,6 +45,8 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 ENV HOME=/home/dev \
     HF_HOME=/hf \
     XDG_CACHE_HOME=/cache \
+    TORCHINDUCTOR_CACHE_DIR=/cache/torchinductor \
+    TRITON_CACHE_DIR=/cache/triton \
     VLLM_NO_USAGE_STATS=1 \
     DO_NOT_TRACK=1 \
     PYTHONUNBUFFERED=1

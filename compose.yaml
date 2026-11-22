@@ -20,7 +20,7 @@ x-base: &base
     NVIDIA_VISIBLE_DEVICES: all
     NVIDIA_DRIVER_CAPABILITIES: compute,utility
     HF_TOKEN: ${HF_TOKEN:-}
-    GPU_MEM_UTIL: ${GPU_MEM_UTIL:-0.85}
+    GPU_MEM_UTIL: ${GPU_MEM_UTIL:-0.82}
     MAX_MODEL_LEN: ${MAX_MODEL_LEN:-8192}
     VLLM_HOST: 0.0.0.0                  # inside the container; ports below bind to 127.0.0.1 only
     # vLLM's PyTorch top-k/top-p sampler instead of FlashInfer's: no JIT compilation on first
