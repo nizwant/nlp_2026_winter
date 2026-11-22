@@ -1,0 +1,249 @@
+# SemEval-2023 Task 3, subtask 3: 23 persuasion techniques, in the order of routing.labels.SEMEVAL_LABELS.
+# def_en: taken from data/sem_eval/task3_def.csv with typos fixed. Three entries differ in substance and
+#         were written from memory of the task guidelines, so CHECK THEM against the official annotation
+#         guidelines before the main runs:
+#           - Appeal_to_Authority: the CSV row repeats the Appeal_to_Hypocrisy definition by mistake.
+#           - Appeal_to_Fear-Prejudice: the CSV sentence is missing "an idea" and "or fear".
+#           - False_Dilemma-No_Choice: the "no choice" sentence was added.
+# name_pl, def_pl: DRAFT Polish translations. To be checked by a second team member before the main runs.
+
+Loaded_Language:
+  name_en: loaded language
+  name_pl: język nacechowany emocjonalnie
+  def_en: >-
+    Using specific words and phrases with strong emotional implications (either positive or negative)
+    to influence and convince the audience that an argument is valid/true.
+  def_pl: >-
+    Użycie słów i zwrotów o silnym zabarwieniu emocjonalnym (pozytywnym lub negatywnym), aby wpłynąć
+    na odbiorców i przekonać ich, że argument jest słuszny.
+
+Name_Calling-Labeling:
+  name_en: name calling or labeling
+  name_pl: etykietowanie, obraźliwe określenia
+  def_en: >-
+    A form of argument in which loaded labels are directed at an individual or group, typically in an
+    insulting or demeaning way. Labelling an object as either something the target audience fears, hates,
+    or on the contrary finds desirable or loves.
+  def_pl: >-
+    Przypisywanie osobie lub grupie nacechowanych etykiet, zwykle obraźliwych lub poniżających; określanie
+    kogoś lub czegoś jako tego, czego odbiorcy się boją lub nienawidzą, albo przeciwnie, co uważają za
+    pożądane lub kochają.
+
+Repetition:
+  name_en: repetition
+  name_pl: powtórzenie
+  def_en: >-
+    A fallacy by which the speaker uses the same word, phrase, story, or imagery repeatedly with the hopes
+    that the repetition will lead to persuade the audience.
+  def_pl: >-
+    Wielokrotne użycie tego samego słowa, zwrotu, historii lub obrazu w nadziei, że samo powtarzanie
+    przekona odbiorców.
+
+Doubt:
+  name_en: casting doubt
+  name_pl: podawanie w wątpliwość
+  def_en: >-
+    Casting doubt on the character or personal attributes of someone or something in order to question
+    their general credibility or quality, instead of using a proper argument related to the topic.
+  def_pl: >-
+    Podawanie w wątpliwość charakteru lub cech kogoś albo czegoś, aby zakwestionować jego ogólną
+    wiarygodność lub jakość, zamiast rzeczowego argumentu na temat.
+
+Exaggeration-Minimisation:
+  name_en: exaggeration or minimisation
+  name_pl: wyolbrzymianie lub umniejszanie
+  def_en: >-
+    Either representing something in an excessive manner: making things larger, better, worse (e.g. 'the
+    best of the best', 'quality guaranteed') or making something seem less important or smaller than it
+    really is (e.g. saying that an insult was just a joke), downplaying statements and ignoring arguments
+    and accusations made by an opponent.
+  def_pl: >-
+    Przedstawianie czegoś w przesadny sposób, jako większe, lepsze lub gorsze niż w rzeczywistości
+    (np. „najlepszy z najlepszych”), albo umniejszanie znaczenia czegoś (np. twierdzenie, że obelga była
+    tylko żartem), bagatelizowanie wypowiedzi oraz ignorowanie argumentów i zarzutów przeciwnika.
+
+Appeal_to_Fear-Prejudice:
+  name_en: appeal to fear or prejudice
+  name_pl: odwołanie do strachu lub uprzedzeń
+  def_en: >-
+    This technique aims at promoting or rejecting an idea through the repulsion or fear of the audience
+    towards this idea (e.g. via exploiting some preconceived judgements) or towards its alternative.
+  def_pl: >-
+    Promowanie lub odrzucanie idei przez wzbudzanie u odbiorców strachu albo niechęci wobec tej idei
+    (np. przez wykorzystanie uprzedzeń) lub wobec jej alternatywy.
+
+Flag_Waving:
+  name_en: flag waving
+  name_pl: wymachiwanie flagą
+  def_en: >-
+    Justifying or promoting an idea by exhaling the pride of a group or highlighting the benefits for
+    that specific group.
+  def_pl: >-
+    Uzasadnianie lub promowanie idei przez odwołanie się do dumy grupy (np. narodu) albo przez
+    podkreślanie korzyści dla tej właśnie grupy.
+
+Causal_Oversimplification:
+  name_en: causal oversimplification
+  name_pl: uproszczenie przyczynowe
+  def_en: >-
+    Assuming a single cause or reason when there are actually multiple causes for an issue.
+  def_pl: >-
+    Wskazywanie jednej przyczyny zjawiska, które w rzeczywistości ma wiele przyczyn.
+
+Conversation_Killer:
+  name_en: conversation killer
+  name_pl: ucinanie dyskusji
+  def_en: >-
+    Words or phrases that discourage critical thought and meaningful discussion about a given topic.
+    A form of loaded language, often passing as folk wisdom, intended to end an argument and quell
+    cognitive dissonance.
+  def_pl: >-
+    Słowa lub zwroty, które zniechęcają do krytycznego myślenia i merytorycznej dyskusji na dany temat.
+    Często brzmią jak ludowa mądrość i mają zakończyć spór.
+
+Questioning_the_Reputation:
+  name_en: questioning the reputation
+  name_pl: podważanie reputacji
+  def_en: >-
+    This technique is used to attack the reputation of the target by making strong negative claims about
+    it, focusing specially on undermining its character and moral stature rather than relying on an
+    argument about the topic.
+  def_pl: >-
+    Atak na reputację osoby lub grupy przez silnie negatywne twierdzenia na jej temat, skupione na
+    podważeniu jej charakteru i postawy moralnej, a nie na argumentach dotyczących tematu.
+
+Appeal_to_Values:
+  name_en: appeal to values
+  name_pl: odwołanie do wartości
+  def_en: >-
+    This technique gives weight to an idea by linking it to values seen by the target audience as
+    positive. These values are presented as an authoritative reference in order to support or reject an
+    argument. Examples of such values are, for instance: tradition, religion, ethics, age, fairness,
+    liberty, democracy, peace, transparency, etc.
+  def_pl: >-
+    Nadawanie wagi idei przez powiązanie jej z wartościami, które odbiorcy uważają za pozytywne
+    (np. tradycja, religia, etyka, sprawiedliwość, wolność, demokracja, pokój, przejrzystość). Wartości te
+    są przedstawiane jako autorytatywne uzasadnienie poparcia lub odrzucenia argumentu.
+
+Obfuscation-Vagueness-Confusion:
+  name_en: obfuscation, intentional vagueness, confusion
+  name_pl: zaciemnianie, celowa niejasność
+  def_en: >-
+    Using words which are deliberately not clear so that the audience may have its own interpretations.
+  def_pl: >-
+    Użycie celowo niejasnych sformułowań, tak aby odbiorcy mogli je interpretować po swojemu.
+
+False_Dilemma-No_Choice:
+  name_en: false dilemma or no choice
+  name_pl: fałszywy dylemat lub brak wyboru
+  def_en: >-
+    Sometimes called the 'either-or' fallacy, a false dilemma is a logical fallacy that presents only two
+    options or sides when there are many options or sides. In the extreme case, the audience is told
+    exactly which action to take, eliminating any other possible choice.
+  def_pl: >-
+    Przedstawienie tylko dwóch możliwości lub stron, gdy w rzeczywistości jest ich więcej. W skrajnej
+    postaci odbiorcom wskazuje się jedyne możliwe działanie, wykluczając każdy inny wybór.
+
+Red_Herring:
+  name_en: red herring
+  name_pl: odwracanie uwagi
+  def_en: >-
+    This technique consists in diverting the attention of the audience from the main topic being
+    discussed, by introducing another topic.
+  def_pl: >-
+    Odwrócenie uwagi odbiorców od głównego tematu przez wprowadzenie innego wątku.
+
+Straw_Man:
+  name_en: straw man
+  name_pl: chochoł
+  def_en: >-
+    This technique consists in making an impression of refuting an argument of the opponent's
+    proposition, whereas the real subject of the argument was not addressed or refuted, but instead
+    replaced with a false one.
+  def_pl: >-
+    Stwarzanie wrażenia, że obalono argument przeciwnika, podczas gdy właściwego argumentu nie podjęto,
+    tylko zastąpiono go innym, zniekształconym.
+
+Appeal_to_Authority:
+  name_en: appeal to authority
+  name_pl: odwołanie do autorytetu
+  def_en: >-
+    A weight is given to an argument, an idea or information by simply stating that a particular entity
+    considered as an authority is the source of the information. The entity mentioned as an authority
+    may, but does not need to be, an actual valid authority in the domain-specific field.
+  def_pl: >-
+    Nadawanie wagi twierdzeniu wyłącznie przez wskazanie, że jego źródłem jest osoba lub instytucja
+    uznawana za autorytet, niezależnie od tego, czy rzeczywiście jest ona ekspertem w danej dziedzinie.
+
+Guilt_by_Association:
+  name_en: guilt by association
+  name_pl: wina przez skojarzenie
+  def_en: >-
+    Attacking the opponent or an activity by associating it with another group, activity or concept that
+    has sharp negative connotations for the target audience.
+  def_pl: >-
+    Atakowanie przeciwnika lub działania przez skojarzenie go z grupą, działaniem albo pojęciem, które
+    budzi u odbiorców silnie negatywne skojarzenia.
+
+Appeal_to_Popularity:
+  name_en: appeal to popularity
+  name_pl: odwołanie do popularności
+  def_en: >-
+    This technique gives weight to an argument or idea by justifying it on the basis that allegedly
+    'everybody' (or the large majority) agrees with it or 'nobody' disagrees with it.
+  def_pl: >-
+    Uzasadnianie twierdzenia tym, że rzekomo „wszyscy” (lub zdecydowana większość) się z nim zgadzają
+    albo że „nikt” mu nie zaprzecza.
+
+Consequential_Oversimplification:
+  name_en: consequential oversimplification (slippery slope)
+  name_pl: równia pochyła
+  def_en: >-
+    An argument/idea is rejected and instead of discussing whether it makes sense and/or is valid, the
+    argument affirms, without proof, that accepting the proposition would imply accepting other
+    propositions that are considered negative.
+  def_pl: >-
+    Odrzucenie idei nie przez ocenę jej zasadności, lecz przez twierdzenie, bez dowodu, że jej przyjęcie
+    pociągnie za sobą kolejne, negatywnie oceniane następstwa.
+
+Appeal_to_Time:
+  name_en: appeal to time
+  name_pl: odwołanie do czasu
+  def_en: >-
+    Argument centred around the idea that the time has come for a particular action. The very timeliness
+    of the idea is part of the argument. The call to 'Act Now!'.
+  def_pl: >-
+    Argument oparty na tym, że właśnie nadszedł czas na określone działanie; sama aktualność idei jest
+    częścią argumentu. Wezwanie w rodzaju „działaj teraz!”.
+
+Appeal_to_Hypocrisy:
+  name_en: appeal to hypocrisy
+  name_pl: zarzut hipokryzji
+  def_en: >-
+    The target of the technique is attacked on its reputation by charging them with hypocrisy or
+    inconsistency. This can be done explicitly by calling out hypocrisy directly, or more implicitly by
+    underlying the contradictions between different positions that were held or actions that were done
+    in the past.
+  def_pl: >-
+    Atak na reputację osoby lub grupy przez zarzucenie jej hipokryzji albo niekonsekwencji: wprost lub
+    pośrednio, przez wskazanie sprzeczności między jej wcześniejszymi stanowiskami lub działaniami.
+
+Slogans:
+  name_en: slogans
+  name_pl: slogany
+  def_en: >-
+    A brief and striking phrase that may include labeling and stereotyping. Slogans tend to act as
+    emotional appeals.
+  def_pl: >-
+    Krótkie, chwytliwe hasło, które może zawierać etykietowanie i stereotypy. Slogany działają zwykle
+    jako apel emocjonalny.
+
+Whataboutism:
+  name_en: whataboutism
+  name_pl: „a u was…” (whataboutism)
+  def_en: >-
+    Instead of answering a critical question or argument an attempt is made to retort with a critical
+    counter-question which expresses a counter-accusation, e.g. mentioning double standards.
+  def_pl: >-
+    Zamiast odpowiedzi na krytyczne pytanie lub argument pada kontrpytanie wyrażające kontrzarzut,
+    np. wytknięcie podwójnych standardów.

@@ -1,0 +1,29 @@
+prompt: p1
+n_samples: 5
+n_batches: 3
+temperature: 0.7
+top_p: 0.95
+base_seed: 1000
+greedy: true
+score_voted: true
+verbal: true
+verbal_greedy: true
+max_concurrency: 16
+limit: null
+allow_test: false
+model_key: bielik
+source: semeval_pl
+role: pilot
+engine:
+  kind: openai
+  server: vLLM 0.33.0
+  base_url: http://127.0.0.1:8000/v1
+  model: Bielik-11B-v3.0-Instruct
+  quantization: AWQ 4-bit, speakleash/Bielik-11B-v3.0-Instruct-awq @ 0de6dd1
+  top_logprobs: 10
+  prompt_logprobs: 20
+  extra_body:
+    repetition_penalty: 1.0
+    top_k: 0
+    min_p: 0.0
+run_name: bielik_semeval_pl_pilot_p1

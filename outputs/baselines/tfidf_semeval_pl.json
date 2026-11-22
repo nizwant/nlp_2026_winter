@@ -1,0 +1,36 @@
+{
+  "source": "semeval_pl",
+  "features": "TF-IDF of word 1-2-grams and character 2-5-grams (within words), sublinear tf, min_df 2",
+  "classifier": "one logistic regression per technique, class_weight balanced",
+  "C": 0.03,
+  "cross_validation_micro_f1": {
+    "0.03": 0.264,
+    "0.1": 0.2559,
+    "0.3": 0.2355,
+    "1.0": 0.1817,
+    "3.0": 0.1424,
+    "10.0": 0.1126
+  },
+  "n_training_items": 1086,
+  "n_training_articles": 68,
+  "labels_without_training_positives": [],
+  "roles": {
+    "pilot": {
+      "micro_f1": 0.17901234567901234,
+      "macro_f1": 0.0503293137984028,
+      "exact_set_accuracy": 0.4246575342465753,
+      "n_items": 219,
+      "n_supported_labels": 19,
+      "auroc_own_confidence": 0.839136371394436
+    },
+    "calibration": {
+      "micro_f1": 0.2643171806167401,
+      "macro_f1": 0.06793867488248884,
+      "exact_set_accuracy": 0.3812375249500998,
+      "n_items": 1002,
+      "n_supported_labels": 23,
+      "auroc_own_confidence": 0.8006206721837528
+    }
+  },
+  "seconds": 34.7
+}

@@ -1,0 +1,22 @@
+# Rates for the cost model (routing.cost). Every value is an explicit assumption or a measurement;
+# change them here and the cost tables follow.
+
+currency: PLN
+
+# Price of one hour of annotation. ASSUMPTION, to be replaced by a sourced figure in the report.
+labour_per_hour: 50.0
+
+gpu:
+  # Price of one GPU hour = power_watts / 1000 * electricity_per_kwh + purchase_price / lifetime_hours.
+  power_watts: 220          # board power limit of the RTX 4070 SUPER as reported by nvidia-smi
+  electricity_per_kwh: 1.10 # ASSUMPTION: household tariff, gross
+  purchase_price: 2900.0    # ASSUMPTION: retail price of the card
+  lifetime_hours: 10000     # ASSUMPTION: hours of use over which the price is spread
+
+# Median seconds a person needs to annotate one item, from the timed sample (PLAN.md: 40 SemEval PL
+# paragraphs, 40 SemEval EN paragraphs and 15 MIPD articles, two annotators each, due 9 Dec).
+# null = not measured yet; the cost tables are then left out.
+human_seconds_per_item:
+  semeval_pl: null
+  semeval_en: null
+  mipd: null

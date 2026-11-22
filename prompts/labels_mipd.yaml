@@ -1,0 +1,93 @@
+# MIPD: 11 manipulation techniques, in the order of routing.labels.MIPD_LABELS.
+# DRAFT: short definitions written from the abridged table in the Phase 1 proposal. Before the main runs,
+# replace them with the wording of the MIPD annotation guidelines (Modzelewski et al., 2024) and have a
+# second team member check the Polish.
+
+REFERENCE_ERROR:
+  name_en: reference error
+  name_pl: błąd odniesienia
+  def_en: >-
+    Citing unreliable, false or non-existent sources, or misrepresenting what a source says.
+  def_pl: >-
+    Powoływanie się na niewiarygodne, fałszywe lub nieistniejące źródła albo przeinaczanie treści źródła.
+
+WHATABOUTISM:
+  name_en: whataboutism
+  name_pl: „a u was…” (whataboutism)
+  def_en: >-
+    Deflecting criticism by pointing to an unrelated issue or by making a counter-accusation.
+  def_pl: >-
+    Odpieranie krytyki przez wskazanie innej, niezwiązanej sprawy albo przez kontrzarzut.
+
+STRAWMAN:
+  name_en: strawman
+  name_pl: chochoł
+  def_en: >-
+    Attacking a distorted or misrepresented version of someone's position instead of the real one.
+  def_pl: >-
+    Atakowanie zniekształconej wersji cudzego stanowiska zamiast stanowiska rzeczywistego.
+
+EMOTIONAL_CONTENT:
+  name_en: appeal to emotion
+  name_pl: odwołanie do emocji
+  def_en: >-
+    Manipulating readers' emotions (fear, anger, outrage, pity) in place of evidence.
+  def_pl: >-
+    Granie na emocjach czytelnika (strach, gniew, oburzenie, litość) zamiast przedstawienia dowodów.
+
+CHERRY_PICKING:
+  name_en: cherry picking
+  name_pl: wybiórcze dobieranie danych
+  def_en: >-
+    Presenting only the data or facts that support a claim and omitting those that contradict it.
+  def_pl: >-
+    Przedstawianie tylko tych danych lub faktów, które potwierdzają tezę, z pominięciem tych, które jej
+    przeczą.
+
+FALSE_CAUSE:
+  name_en: false cause
+  name_pl: fałszywa przyczyna
+  def_en: >-
+    Inferring a causal link from mere correlation or from one event following another.
+  def_pl: >-
+    Wnioskowanie o związku przyczynowym na podstawie samej korelacji lub następstwa w czasie.
+
+MISLEADING_CLICKBAIT:
+  name_en: misleading clickbait
+  name_pl: mylący clickbait
+  def_en: >-
+    A headline that contradicts or misrepresents the content of the article.
+  def_pl: >-
+    Tytuł, który przeczy treści artykułu albo ją przeinacza.
+
+ANECDOTE:
+  name_en: anecdote
+  name_pl: dowód anegdotyczny
+  def_en: >-
+    Using personal stories or isolated cases against statistical or scientific evidence.
+  def_pl: >-
+    Przeciwstawianie osobistych historii lub pojedynczych przypadków danym statystycznym lub naukowym.
+
+LEADING_QUESTIONS:
+  name_en: leading questions
+  name_pl: pytania sugerujące
+  def_en: >-
+    Asking questions that imply a predetermined conclusion.
+  def_pl: >-
+    Pytania sformułowane tak, aby sugerowały z góry założony wniosek.
+
+EXAGGERATION:
+  name_en: exaggeration
+  name_pl: wyolbrzymienie
+  def_en: >-
+    Overstating or understating facts, scale or consequences.
+  def_pl: >-
+    Przesadne przedstawianie albo umniejszanie faktów, skali lub skutków.
+
+QUOTE_MINING:
+  name_en: quote mining
+  name_pl: wyrywanie cytatów z kontekstu
+  def_en: >-
+    Distorting someone's statement through selective, out-of-context quotation.
+  def_pl: >-
+    Zniekształcanie czyjejś wypowiedzi przez wybiórcze cytowanie wyrwane z kontekstu.
