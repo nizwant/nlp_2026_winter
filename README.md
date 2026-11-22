@@ -31,6 +31,66 @@ Supervisor: Soveatin Kuntur - soveatin.kuntur.dokt@pw.edu.pl
 - [ ] Correct template, submitted on time
 - [ ] Folder named surname_surname_surname, same order as Milestone 1
 
+## Environment
+
+One Docker image holds everything: vLLM (as a Python library or as an OpenAI-compatible server), the analysis stack, JupyterLab and pytest. Python packages are pinned in `uv.lock`; model weights are pinned to a Hugging Face commit in `configs/models.yaml`. Both team GPUs are supported: RTX 4070 SUPER (12 GB, sm_89) and RTX 5070 Ti (16 GB, sm_120).
+
+| Component | Version |
+| --- | --- |
+| vLLM | 0.33.0 |
+| PyTorch | 2.14.0, CUDA 13.0 |
+| Python | 3.12 (uv-managed) |
+| Base image | `nvidia/cuda:13.0.3-devel-ubuntu24.04` |
+
+### Host requirements
+
+- Linux, or Windows with WSL2.
+- NVIDIA driver **580 or newer**: `nvidia-smi` must report `CUDA Version: 13.0` or higher.
+- Docker with the NVIDIA runtime. On Ubuntu with apt-installed Docker: install `nvidia-container-toolkit`, then `sudo nvidia-ctk runtime configure --runtime=docker && sudo systemctl restart docker`. The snap Docker package already includes the runtime. Test with:
+  `docker run --rm --runtime=nvidia -e NVIDIA_VISIBLE_DEVICES=all ubuntu:24.04 nvidia-smi`
+- About 25 GB of disk for the image, plus 6–8 GB per model.
+
+### First run
+
+```bash
+cp .env.example .env            # set GPU_MEM_UTIL for your card; HOST_UID/HOST_GID if not 1000
+docker compose build
+docker compose run --rm dev python scripts/check_env.py
+```
+
+`check_env.py` checks that the installed packages match `uv.lock`, that the driver and GPU are supported, and that vLLM loads Bielik, generates text, returns log-probabilities and reproduces seeded samples. It writes `outputs/env_check/<gpu>.json`. Commit that file so the reports from both machines can be compared.
+
+### Daily use
+
+```bash
+docker compose run --rm dev                   # shell with the GPU; the repo is mounted at /workspace
+docker compose up jupyter                     # JupyterLab, URL with token in the log; http://127.0.0.1:8888
+MODEL=pllum docker compose up vllm            # OpenAI-compatible API at http://127.0.0.1:8000/v1
+docker compose run --rm dev pytest
+```
+
+The repository is bind-mounted, so code edits take effect without rebuilding. The host Hugging Face cache (`~/.cache/huggingface`) is mounted too, so weights are downloaded once. vLLM, Triton and torch.compile caches persist in the `cache` volume. Rebuild only when `pyproject.toml` or `uv.lock` changes.
+
+### Changing dependencies
+
+Edit `pyproject.toml`, then refresh the lock and rebuild:
+
+```bash
+docker run --rm --user "$(id -u):$(id -g)" -e UV_CACHE_DIR=/uvc -e HOME=/uvc \
+  -v ~/.cache/uv:/uvc -v "$PWD":/w -w /w ghcr.io/astral-sh/uv:0.13.9-python3.12-trixie-slim uv lock
+docker compose build
+```
+
+Commit `pyproject.toml` and `uv.lock` together, and both of us rebuild. Changing the vLLM version also changes torch, CUDA and the kernels, so rerun `check_env.py` on both GPUs afterwards.
+
+### Without Docker
+
+On Linux with driver 580 or newer, `uv sync && source .venv/bin/activate` installs the same locked packages. Also `export VLLM_USE_FLASHINFER_SAMPLER=0`, which `compose.yaml` sets for you. Docker is still the reference environment.
+
+### Reproducibility across the two GPUs
+
+On one machine, the same seed gives the same samples, and `check_env.py` verifies this. Across the 4070 SUPER and the 5070 Ti this is not guaranteed: vLLM selects different kernels per architecture, and small numeric differences can change sampled tokens. To compare, check `greedy_fingerprint` in the two env reports. In practice, run all reruns for a given model × prompt × item set on one GPU, and record the GPU in every run log.
+
 ## Datasets
 
 - SemEval-2023 Task 3:
