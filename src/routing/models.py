@@ -47,8 +47,14 @@ def get_model(key: str) -> ModelSpec:
     raise KeyError(f"unknown model {key!r}; known: {', '.join(models)}")
 
 
+def machine_limits() -> dict[str, int]:
+    """Optional per-machine caps from .env (MAX_NUM_SEQS, MAX_NUM_BATCHED_TOKENS); unset = vLLM default."""
+    env = {"max_num_seqs": "MAX_NUM_SEQS", "max_num_batched_tokens": "MAX_NUM_BATCHED_TOKENS"}
+    return {arg: int(os.environ[var]) for arg, var in env.items() if os.environ.get(var)}
+
+
 def llm_kwargs(spec: ModelSpec, **overrides: Any) -> dict[str, Any]:
-    """Arguments for vllm.LLM. Memory and context default to GPU_MEM_UTIL and MAX_MODEL_LEN."""
+    """Arguments for vllm.LLM. Memory settings default to the per-machine values in .env."""
     return {
         "model": spec.repo,
         "revision": spec.revision,
@@ -56,6 +62,7 @@ def llm_kwargs(spec: ModelSpec, **overrides: Any) -> dict[str, Any]:
         "seed": 0,
         "gpu_memory_utilization": float(os.environ.get("GPU_MEM_UTIL", "0.82")),
         "max_model_len": int(os.environ.get("MAX_MODEL_LEN", "8192")),
+        **machine_limits(),
         **spec.engine_args,
         **overrides,
     }

@@ -1,0 +1,55 @@
+{
+  "date": "2026-11-22T13:03:39+00:00",
+  "gpu": {
+    "name": "NVIDIA GeForce RTX 4070 SUPER",
+    "memory_total_gib": 11.99,
+    "memory_used_before_gib": 1.65
+  },
+  "workload": {
+    "paragraphs": 100,
+    "max_tokens": 256,
+    "max_model_len": 2048,
+    "samples_per_paragraph": 5,
+    "batch_invariant": true
+  },
+  "results": [
+    {
+      "model": "bielik",
+      "repo": "speakleash/Bielik-11B-v3.0-Instruct-awq",
+      "revision": "0de6dd10ddcbd570b3844f1ae0e98f8e4800b548",
+      "vocab_size": 32128,
+      "load_seconds": 84.8,
+      "single_tokens_per_second": 8.5,
+      "batch_output_tokens_per_second": 333.8,
+      "batch_total_tokens_per_second": 388.2,
+      "batch_paragraphs_per_second": 0.26,
+      "batch_seconds": 383.4,
+      "prompt_tokens_mean": 208.6,
+      "gpu_memory_in_use_gib": 11.51,
+      "gpu_mem_util": 0.82
+    },
+    {
+      "model": "gemma4_e2b",
+      "repo": "google/gemma-4-E2B-it-qat-w4a16-ct",
+      "revision": "971342c08f607aa7779983f6b5289778b5d271a7",
+      "vocab_size": 262144,
+      "load_seconds": 150.7,
+      "single_tokens_per_second": 31.4,
+      "batch_output_tokens_per_second": 2434.6,
+      "batch_total_tokens_per_second": 2725.4,
+      "batch_paragraphs_per_second": 1.9,
+      "batch_seconds": 52.6,
+      "prompt_tokens_mean": 152.9,
+      "gpu_memory_in_use_gib": 11.77,
+      "gpu_mem_util": 0.82
+    },
+    {
+      "model": "pllum",
+      "error": "exit code 1, see the log above"
+    },
+    {
+      "model": "mistral_nemo",
+      "error": "exit code 1, see the log above"
+    }
+  ]
+}

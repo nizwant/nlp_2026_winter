@@ -10,7 +10,7 @@ Memory and context come from GPU_MEM_UTIL and MAX_MODEL_LEN (see .env.example).
 import os
 import sys
 
-from routing.models import get_model, serve_args
+from routing.models import get_model, machine_limits, serve_args
 
 
 def main() -> None:
@@ -25,6 +25,7 @@ def main() -> None:
         "--max-model-len", os.environ.get("MAX_MODEL_LEN", "8192"),
         "--gpu-memory-utilization", os.environ.get("GPU_MEM_UTIL", "0.82"),
         "--seed", "0",
+        *[a for k, v in machine_limits().items() for a in ("--" + k.replace("_", "-"), str(v))],
         *sys.argv[2:],
     ]
     print("+", " ".join(cmd), flush=True)

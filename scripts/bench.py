@@ -64,14 +64,18 @@ def worker(key: str, args: argparse.Namespace) -> dict:
     import pynvml
     from vllm import SamplingParams
 
-    from routing.models import get_model, make_llm
+    from routing.models import get_model, machine_limits, make_llm
 
     spec = get_model(key)
     chats = [[{"role": "user", "content": INSTRUCTION.format(text=t)}]
              for t in paragraphs(args.paragraphs)]
 
+    explicit = {k: getattr(args, k) for k in ("max_num_seqs", "max_num_batched_tokens")
+                if getattr(args, k) is not None}
+    limits = {**machine_limits(), **explicit}  # recorded as used, whether from .env or flags
     t0 = time.perf_counter()
-    llm = make_llm(spec, gpu_memory_utilization=args.gpu_mem_util, max_model_len=args.max_model_len)
+    llm = make_llm(spec, gpu_memory_utilization=args.gpu_mem_util,
+                   max_model_len=args.max_model_len, **limits)
     load_s = time.perf_counter() - t0
 
     def chat(batch, params):
@@ -101,6 +105,8 @@ def worker(key: str, args: argparse.Namespace) -> dict:
         "repo": spec.repo,
         "revision": spec.revision,
         "vocab_size": len(llm.get_tokenizer()),
+        "gpu_mem_util": args.gpu_mem_util,
+        **limits,
         "load_seconds": round(load_s, 1),
         "single_tokens_per_second": round(single_tokens / single_s, 1),
         "batch_output_tokens_per_second": round(out_tokens / batch_s, 1),
@@ -114,11 +120,13 @@ def worker(key: str, args: argparse.Namespace) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--models", nargs="+", help="keys in configs/models.yaml (default: all)")
+    ap.add_argument("--models", nargs="+", metavar="KEY", help="keys in configs/models.yaml (default: all)")
     ap.add_argument("--paragraphs", type=int, default=100)
     ap.add_argument("--max-tokens", type=int, default=256, help="new tokens per completion")
     ap.add_argument("--max-model-len", type=int, default=2048)
     ap.add_argument("--gpu-mem-util", type=float, default=float(os.environ.get("GPU_MEM_UTIL", "0.82")))
+    ap.add_argument("--max-num-seqs", type=int, help="cap on parallel sequences (vLLM default if unset)")
+    ap.add_argument("--max-num-batched-tokens", type=int, help="cap on tokens per step (prefill chunk)")
     ap.add_argument("--worker", help=argparse.SUPPRESS)
     ap.add_argument("--result", type=Path, help=argparse.SUPPRESS)
     args = ap.parse_args()
@@ -129,9 +137,16 @@ def main() -> int:
 
     from routing.models import load_models
 
-    keys = args.models or list(load_models())
+    known = load_models()
+    keys = args.models or list(known)
+    unknown = [k for k in keys if k not in known and "/" not in k]
+    if unknown:
+        ap.error(f"unknown model(s) {unknown}; known: {', '.join(known)}")
     gpu = gpu_info()
-    settings = {k: getattr(args, k) for k in ("paragraphs", "max_tokens", "max_model_len", "gpu_mem_util")}
+    workload = {k: getattr(args, k) for k in ("paragraphs", "max_tokens", "max_model_len")}
+    engine = {k: getattr(args, k) for k in ("gpu_mem_util", "max_num_seqs", "max_num_batched_tokens")
+              if getattr(args, k) is not None}
+    settings = {**workload, **engine}
     results = []
     for key in keys:
         print(f"\n=== {key} ===", flush=True)
@@ -143,28 +158,39 @@ def main() -> int:
             results.append(json.loads(result.read_text()) if rc == 0 and result.exists()
                            else {"model": key, "error": f"exit code {rc}, see the log above"})
 
+    batch_invariant = os.environ.get("VLLM_BATCH_INVARIANT") == "1"
+    workload = {**workload, "samples_per_paragraph": N_SAMPLES, "batch_invariant": batch_invariant}
+    slug = re.sub(r"[^a-z0-9]+", "-", gpu["name"].lower()).strip("-")
+    suffix = "_batch-invariant" if batch_invariant else ""
+    out = ROOT / "outputs" / "bench" / f"{slug}{suffix}.json"
+    # Re-running some models replaces their rows and keeps the others, if the workload matches.
+    merged = {}
+    if out.exists():
+        old = json.loads(out.read_text())
+        if old.get("workload") == workload:
+            merged = {r["model"]: r for r in old["results"]}
+    merged.update({r["model"]: r for r in results})
     report = {
         "date": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
         "gpu": gpu,
-        "settings": {**settings, "samples_per_paragraph": N_SAMPLES},
-        "results": results,
+        "workload": workload,
+        "results": list(merged.values()),
     }
-    slug = re.sub(r"[^a-z0-9]+", "-", gpu["name"].lower()).strip("-")
-    out = ROOT / "outputs" / "bench" / f"{slug}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2) + "\n")
 
     print(f"\n{gpu['name']}, {args.paragraphs} paragraphs x {N_SAMPLES} samples, "
-          f"{args.max_tokens} new tokens each, gpu_memory_utilization {args.gpu_mem_util}\n")
-    print("| model | load s | single tok/s | batch out tok/s | paragraphs/s | prompt tok | GPU GiB |")
-    print("|---|---:|---:|---:|---:|---:|---:|")
-    for r in results:
+          f"{args.max_tokens} new tokens each, batch-invariant {'on' if batch_invariant else 'off'}\n")
+    print("| model | load s | single tok/s | batch out tok/s | paragraphs/s | prompt tok | GPU GiB | engine limits |")
+    print("|---|---:|---:|---:|---:|---:|---:|---|")
+    for r in report["results"]:
         if "error" in r:
-            print(f"| {r['model']} | {r['error']} ||||||")
+            print(f"| {r['model']} | {r['error']} |||||||")
             continue
+        limits = ", ".join(f"{k}={r[k]}" for k in ("gpu_mem_util", "max_num_seqs", "max_num_batched_tokens") if k in r)
         print(f"| {r['model']} | {r['load_seconds']:.0f} | {r['single_tokens_per_second']:.0f} | "
               f"{r['batch_output_tokens_per_second']:.0f} | {r['batch_paragraphs_per_second']:.2f} | "
-              f"{r['prompt_tokens_mean']:.0f} | {r['gpu_memory_in_use_gib']:.1f} |")
+              f"{r['prompt_tokens_mean']:.0f} | {r['gpu_memory_in_use_gib']:.1f} | {limits} |")
     print(f"\nSaved {out.relative_to(ROOT)}")
     return 0 if all("error" not in r for r in results) else 1
 

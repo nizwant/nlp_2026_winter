@@ -89,6 +89,19 @@ docker compose run --rm dev python scripts/bench.py                          # t
 
 `bench.py` runs each model on 100 SemEval PL paragraphs × 5 samples, with every completion forced to 256 new tokens, plus a single-request decode test. It writes `outputs/bench/<gpu>.json`.
 
+Measured on the RTX 4070 SUPER (12 GB), 22 Nov 2026, `max_model_len` 2048:
+
+| Model | single request, tok/s | batch, output tok/s | paragraphs/s (5 samples each) | batch-invariant: single / batch tok/s | prompt tokens | engine limits |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| gemma4_e2b | 181 | 5,521 | 4.31 | 31 / 2,435 | 153 | util 0.82 |
+| bielik | 71 | 1,291 | 1.01 | 8 / 334 | 209 | util 0.82 |
+| pllum | 61 | 936 | 0.73 | does not fit | 155 | util 0.86, 32 seqs, 2048 batched tokens |
+| mistral_nemo | 63 | 922 | 0.72 | does not fit | 155 | util 0.86, 32 seqs, 2048 batched tokens |
+
+- Bielik's tokenizer needs about 35% more tokens than the others for the same paragraphs (prompt tokens column), so compare models in paragraphs/s, not tok/s.
+- On 12 GB, the 12B models run only with the limits shown (see `.env.example`). Their KV cache then holds about 4,100 tokens, roughly 9 sequences in flight, so batch throughput is capped by memory. In batch-invariant mode they do not start at all. Run them on the 16 GB card.
+- Batch-invariant mode costs 4× batch throughput for Bielik and 2.3× for Gemma.
+
 ### Changing dependencies
 
 Edit `pyproject.toml`, then refresh the lock and rebuild:
@@ -105,9 +118,18 @@ Commit `pyproject.toml` and `uv.lock` together, and both of us rebuild. Changing
 
 On Linux with driver 580 or newer, `uv sync && source .venv/bin/activate` installs the same locked packages. Also `export VLLM_USE_FLASHINFER_SAMPLER=0`, which `compose.yaml` sets for you. Docker is still the reference environment.
 
-### Reproducibility across the two GPUs
+### Reproducibility
 
-On one machine, the same seed gives the same samples, and `check_env.py` verifies this. Across the 4070 SUPER and the 5070 Ti this is not guaranteed: vLLM selects different kernels per architecture, and small numeric differences can change sampled tokens. To compare, check `greedy_fingerprint` in the two env reports. In practice, run all reruns for a given model × prompt × item set on one GPU, and record the GPU in every run log.
+**A seed alone does not make vLLM's sampled outputs reproducible.** vLLM gives each of the `n` samples its own seed, so the random draws are fixed. The logits are not: GPU kernels give slightly different numbers depending on how many sequences share a batch, and the batch composition at each step depends on request timing. When a random draw lands near a token boundary, those tiny differences flip the sampled token, and the completion diverges from there. Measured on the 4070 SUPER with Bielik (5 samples × 2 prompts, seed 1234, repeated in one process and across processes):
+
+| `VLLM_BATCH_INVARIANT` | greedy | seeded `n=1` | seeded `n=5`, same process | seeded `n=5`, new process |
+| --- | --- | --- | --- | --- |
+| `0` (default) | identical | identical | 1 of 4 repeats differed | differed |
+| `1` | identical | identical | identical | identical (same hash in 3 processes) |
+
+`VLLM_BATCH_INVARIANT=1` (in `.env`, or `docker compose run -e VLLM_BATCH_INVARIANT=1 ...`) switches vLLM to batch-invariant kernels; 4-bit weights are then dequantized for a deterministic matmul instead of using the fast Marlin kernel. `outputs/bench/` holds the speed in both modes. `check_env.py` reports whether seeded samples reproduced.
+
+Across the two GPUs, outputs are not expected to match even in batch-invariant mode, because each architecture uses different kernels. Compare `greedy_fingerprint` in the two env reports to see. In practice, run all reruns for a given model × prompt × item set on one GPU, and record the GPU in every run log.
 
 ## Datasets
 

@@ -39,12 +39,14 @@ PROMPTS = [
 ]
 
 failures: list[str] = []
+warnings: list[str] = []
 
 
-def check(ok: bool, label: str, detail: str = "") -> bool:
-    print(f"  [{'ok' if ok else 'FAIL'}] {label}" + (f": {detail}" if detail else ""))
+def check(ok: bool, label: str, detail: str = "", warn_only: bool = False) -> bool:
+    status = "ok" if ok else ("warn" if warn_only else "FAIL")
+    print(f"  [{status}] {label}" + (f": {detail}" if detail else ""))
     if not ok:
-        failures.append(label)
+        (warnings if warn_only else failures).append(label)
     return ok
 
 
@@ -126,9 +128,10 @@ def model_report(key: str, gpu_mem_util: float, max_model_len: int) -> dict:
         return llm.chat(chats, params, use_tqdm=False,
                         chat_template_kwargs=spec.chat_template_kwargs or None)
 
+    # Sampled first: a warm-up call before it would hide first-call differences.
     t0 = time.perf_counter()
-    g = chat(greedy)
     s1 = chat(sampled)
+    g = chat(greedy)
     gen_s = time.perf_counter() - t0
     s2 = chat(sampled)
 
@@ -142,7 +145,12 @@ def model_report(key: str, gpu_mem_util: float, max_model_len: int) -> dict:
 
     print()
     check(all(o.outputs[0].logprobs for o in g), "vLLM returns token log-probabilities")
-    check(runs1 == runs2, "same seed gives the same 5 samples on a repeat")
+    batch_invariant = os.environ.get("VLLM_BATCH_INVARIANT") == "1"
+    # Without batch-invariant kernels a mismatch is a known vLLM property, not a broken setup.
+    check(runs1 == runs2, "same seed gives the same 5 samples on a repeat",
+          "" if runs1 == runs2 or batch_invariant else
+          "expected with VLLM_BATCH_INVARIANT=0 (logits depend on batch composition); see README",
+          warn_only=not batch_invariant)
     distinct = [len({tuple(t) for t in r}) for r in runs1]
     check(any(d > 1 for d in distinct), "samples at temperature 0.7 differ", f"distinct per prompt: {distinct}")
     for prompt, o in zip(PROMPTS, g):
@@ -152,6 +160,7 @@ def model_report(key: str, gpu_mem_util: float, max_model_len: int) -> dict:
 
     return {
         "model": {"key": spec.key, "repo": spec.repo, "revision": spec.revision},
+        "batch_invariant": batch_invariant,
         "gpu_memory_utilization": gpu_mem_util,
         "max_model_len": max_model_len,
         "load_seconds": round(load_s, 1),
@@ -194,13 +203,17 @@ def main() -> int:
     if not args.no_model and not failures:
         report["smoke_test"] = model_report(args.model, args.gpu_mem_util, args.max_model_len)
     report["failures"] = failures
+    report["warnings"] = warnings
 
     slug = re.sub(r"[^a-z0-9]+", "-", gpu.get("name", "no-gpu").lower()).strip("-")
     name = slug if args.model == "bielik" or args.no_model else f"{slug}_{args.model.replace('/', '-')}"
     out = args.out or ROOT / "outputs" / "env_check" / f"{name}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
-    print(f"\n{'All checks passed' if not failures else 'FAILED: ' + ', '.join(failures)}. Report: {out.relative_to(ROOT)}")
+    verdict = "All checks passed" if not failures else "FAILED: " + ", ".join(failures)
+    if warnings:
+        verdict += f" ({len(warnings)} warning{'s' if len(warnings) > 1 else ''})"
+    print(f"\n{verdict}. Report: {out.relative_to(ROOT)}")
     return 1 if failures else 0
 
 
