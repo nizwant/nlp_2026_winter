@@ -237,3 +237,9 @@ __marimo__/
 /latex/*.xdv
 /latex/sota_*
 .DS_Store
+
+# Experiment outputs stay out of git (raw completions are private, see the project description);
+# environment reports are small and are committed so the two machines can be compared.
+/outputs/*
+!/outputs/env_check/
+!/outputs/bench/

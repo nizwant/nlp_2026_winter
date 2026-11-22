@@ -1,0 +1,10 @@
+# Only pyproject.toml, uv.lock, .python-version, README.md and src/ are copied into the image;
+# everything else reaches the container through the bind mount at run time.
+*
+!pyproject.toml
+!uv.lock
+!.python-version
+!README.md
+!src/
+**/__pycache__
+**/*.egg-info

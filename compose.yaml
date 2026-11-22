@@ -1,0 +1,58 @@
+# One image, three ways to use it. Per-machine settings go in .env (copy .env.example).
+#
+#   docker compose build
+#   docker compose run --rm dev python scripts/check_env.py   # versions, GPU, vLLM smoke test
+#   docker compose run --rm dev                               # shell with the GPU
+#   docker compose up jupyter                                 # JupyterLab on http://127.0.0.1:8888
+#   MODEL=pllum docker compose up vllm                        # OpenAI-compatible API on :8000
+
+name: nlp-routing
+
+x-base: &base
+  image: nlp-routing:latest
+  build: .
+  # GPU through the NVIDIA runtime. Works with the snap Docker package and with apt Docker plus
+  # nvidia-container-toolkit (after `sudo nvidia-ctk runtime configure --runtime=docker` and a
+  # Docker restart). Docker Desktop on Windows has no `nvidia` runtime: replace `runtime: nvidia`
+  # with `gpus: all` there.
+  runtime: nvidia
+  environment:
+    NVIDIA_VISIBLE_DEVICES: all
+    NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    HF_TOKEN: ${HF_TOKEN:-}
+    GPU_MEM_UTIL: ${GPU_MEM_UTIL:-0.85}
+    MAX_MODEL_LEN: ${MAX_MODEL_LEN:-8192}
+    VLLM_HOST: 0.0.0.0                  # inside the container; ports below bind to 127.0.0.1 only
+    # vLLM's PyTorch top-k/top-p sampler instead of FlashInfer's: no JIT compilation on first
+    # use, and the same sampling code path on both GPUs.
+    VLLM_USE_FLASHINFER_SAMPLER: "0"
+  # Run as the host user so files written to the repo are not owned by root.
+  user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+  ipc: host
+  working_dir: /workspace
+  volumes:
+    - .:/workspace
+    - ${HF_CACHE:-~/.cache/huggingface}:/hf
+    - cache:/cache
+
+services:
+  dev:
+    <<: *base
+    command: bash
+    stdin_open: true
+    tty: true
+
+  jupyter:
+    <<: *base
+    command: jupyter lab --ip=0.0.0.0 --port=8888 --no-browser
+    ports:
+      - "127.0.0.1:8888:8888"
+
+  vllm:
+    <<: *base
+    command: python scripts/serve.py ${MODEL:-bielik}
+    ports:
+      - "127.0.0.1:8000:8000"
+
+volumes:
+  cache:

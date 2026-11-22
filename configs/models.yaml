@@ -1,0 +1,39 @@
+# Model weights, pinned to a Hugging Face commit so that every run on every machine loads the
+# same files. The key (bielik, pllum, ...) is what the scripts take as an argument.
+#
+# Optional fields:
+#   study: false            smoke tests and speed comparisons only, not part of the study runs
+#   engine_args             extra vllm.LLM / `vllm serve` arguments, applied wherever the model loads
+#   chat_template_kwargs    passed to the chat template on every request
+
+bielik:
+  repo: speakleash/Bielik-11B-v3.0-Instruct-awq
+  revision: 0de6dd10ddcbd570b3844f1ae0e98f8e4800b548
+  served_name: Bielik-11B-v3.0-Instruct
+  # Official AWQ build from SpeakLeash.
+
+pllum:
+  repo: mozarcik/PLLuM-12B-chat-2512-awq
+  revision: 2ad2863e47f26fcb75f0f2dad40d3e3959a15931
+  served_name: PLLuM-12B-chat-2512
+  # Community AWQ build (llm-compressor, W4A16) of CYFRAGOVPL/PLLuM-12B-chat-2512;
+  # there is no official 4-bit build.
+
+mistral_nemo:
+  repo: pbhappliedsystems/Mistral_Nemo_Instruct_2407_4bit_AWQ_Async
+  revision: 98d07b0643f435a75e115cffbda6daacacbd6216
+  served_name: Mistral-Nemo-Instruct-2407
+  # Community AWQ build of mistralai/Mistral-Nemo-Instruct-2407, the base model of PLLuM-12B.
+
+gemma4_e2b:
+  repo: google/gemma-4-E2B-it-qat-w4a16-ct
+  revision: 971342c08f607aa7779983f6b5289778b5d271a7
+  served_name: gemma-4-E2B-it
+  study: false
+  # Official Google QAT build: 4-bit weights (group size 32) in compressed-tensors format,
+  # Apache 2.0, not gated. The download is 7.8 GB despite the 4-bit weights, because the
+  # per-layer embedding tables and the vision/audio encoders stay in 16-bit.
+  engine_args:
+    language_model_only: true   # text only: no image/audio inputs or encoder memory reserve
+  chat_template_kwargs:
+    enable_thinking: false      # already the template's default; set so it cannot drift

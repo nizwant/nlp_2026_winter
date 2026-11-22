@@ -1,0 +1,41 @@
+[project]
+name = "routing"
+version = "0.1.0"
+description = "Is LLM self-consistency a usable signal for routing annotation work?"
+readme = "README.md"
+license = "MIT"
+requires-python = "==3.12.*"
+dependencies = [
+    # The inference engine. Bumping it changes torch, CUDA and the kernels, so do it on purpose,
+    # in its own commit, and rerun scripts/check_env.py on both GPUs afterwards.
+    "vllm==0.33.0",
+    "numpy",
+    "pandas",
+    "scipy",
+    "scikit-learn",
+    "matplotlib",
+    "pyyaml",
+    "tqdm",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+    "ipykernel",
+    "jupyterlab",
+]
+
+[build-system]
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"
+
+[tool.uv]
+default-groups = ["dev"]
+# vLLM ships CUDA wheels for Linux only; resolving for other platforms would fail or pull
+# packages nobody can use. Windows users run this in WSL2 or through Docker.
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
