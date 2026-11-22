@@ -1,0 +1,30 @@
+prompt: p2
+n_samples: 5
+n_batches: 1
+temperature: 0.7
+top_p: 0.95
+base_seed: 1000
+greedy: true
+score_voted: true
+score_when_greedy_agrees: false
+verbal: true
+verbal_greedy: true
+max_concurrency: 20
+limit: null
+allow_test: false
+model_key: pllum
+source: semeval_pl
+role: pilot
+engine:
+  kind: openai
+  server: vLLM 0.33.0
+  base_url: http://127.0.0.1:8000/v1
+  model: PLLuM-12B-chat-2512
+  quantization: AWQ 4-bit (community build), mozarcik/PLLuM-12B-chat-2512-awq @ 2ad2863
+  top_logprobs: 10
+  prompt_logprobs: 20
+  extra_body:
+    repetition_penalty: 1.0
+    top_k: 0
+    min_p: 0.0
+run_name: pllum_semeval_pl_pilot_p2

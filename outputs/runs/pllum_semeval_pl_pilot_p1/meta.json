@@ -1,0 +1,85 @@
+[
+  {
+    "run_name": "pllum_semeval_pl_pilot_p1",
+    "finished": "2026-11-16T20:22:13+00:00",
+    "n_items": 219,
+    "max_concurrency": 20,
+    "wall_seconds": 618.82,
+    "output_tokens_per_second": 590.0,
+    "generations": 1711,
+    "invalid": 0,
+    "prompt_tokens": 3201490,
+    "output_tokens": 365073,
+    "stages": {
+      "sample": {
+        "generations": 1095,
+        "invalid": 0,
+        "prompt_tokens": 1958630,
+        "output_tokens": 301708,
+        "wall_seconds": 408.14,
+        "output_tokens_per_second": 739.2,
+        "gpu_memory_peak_mib": 11255,
+        "gpu_utilisation_mean_percent": 97.9,
+        "gpu_power_mean_watts": 214.1
+      },
+      "greedy": {
+        "generations": 219,
+        "invalid": 0,
+        "prompt_tokens": 391726,
+        "output_tokens": 59977,
+        "wall_seconds": 87.78,
+        "output_tokens_per_second": 683.3,
+        "gpu_memory_peak_mib": 11255,
+        "gpu_utilisation_mean_percent": 99.9,
+        "gpu_power_mean_watts": 213.2
+      },
+      "score": {
+        "generations": 89,
+        "invalid": 0,
+        "prompt_tokens": 184117,
+        "output_tokens": 0,
+        "wall_seconds": 65.03,
+        "output_tokens_per_second": 0.0,
+        "gpu_memory_peak_mib": 11255,
+        "gpu_utilisation_mean_percent": 92.9,
+        "gpu_power_mean_watts": 215.5
+      },
+      "verbal": {
+        "generations": 219,
+        "invalid": 0,
+        "prompt_tokens": 473822,
+        "output_tokens": 2400,
+        "wall_seconds": 41.09,
+        "output_tokens_per_second": 58.4,
+        "gpu_memory_peak_mib": 11255,
+        "gpu_utilisation_mean_percent": 90.0,
+        "gpu_power_mean_watts": 215.2
+      },
+      "verbal_greedy": {
+        "generations": 89,
+        "invalid": 0,
+        "prompt_tokens": 193195,
+        "output_tokens": 988,
+        "wall_seconds": 16.78,
+        "output_tokens_per_second": 58.9,
+        "gpu_memory_peak_mib": 11255,
+        "gpu_utilisation_mean_percent": 100.0,
+        "gpu_power_mean_watts": 218.8
+      }
+    },
+    "gpu_memory_used_mib": 11255,
+    "git": {
+      "commit": "2bf0551b8d40c99bf69d997ccc11b9b0e5521a40",
+      "dirty": true
+    },
+    "versions": {
+      "python": "3.12.16",
+      "numpy": "2.5.4",
+      "pandas": "3.1.1",
+      "scikit-learn": "1.9.1",
+      "openai": "3.51.0",
+      "pyyaml": "6.0.3"
+    },
+    "platform": "Linux-7.0.0-43-generic-x86_64-with-glibc2.39"
+  }
+]

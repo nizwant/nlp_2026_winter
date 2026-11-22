@@ -238,7 +238,7 @@ __marimo__/
 /latex/sota_*
 .DS_Store
 
-# Project: raw model outputs and raw downloads stay local
-outputs/runs/
-data/raw/
-outputs/baselines/
+# # Project: raw model outputs and raw downloads stay local
+# outputs/runs/
+# data/raw/
+# outputs/baselines/
